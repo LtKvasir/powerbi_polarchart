@@ -395,8 +395,8 @@ export class ViEvac_PolarChart implements IVisual {
                             fontSize,
                             fontFamily
                         )
-                        return Math.sin(angleOffSet * Math.PI / 180) * -(textSize.height) +
-                            Math.cos(angleOffSet * Math.PI / 180) * -(textSize.width)
+                        return Math.max(Math.sin(angleOffSet * Math.PI / 180) * -(textSize.height) +
+                            Math.cos(angleOffSet * Math.PI / 180) * -(textSize.width), 0)
                     })
 
                 console.log(axisWrapper.selectAll(ViEvac_PolarChart.ClsAxisLabels))
