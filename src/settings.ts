@@ -34,35 +34,75 @@ import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
  */
 export class Settings extends DataViewObjectsParser {
     public dataPoint: dataPointSettings = new dataPointSettings();
+    public categoryAxis: categoryAxisSettings = new categoryAxisSettings();
     public categoryLabels: categoryLabelSettings = new categoryLabelSettings();
+    public dataAxis: DataAxisSettings = new DataAxisSettings();
+    public dataAxisLabels: DataAxisLabelsSettings = new DataAxisLabelsSettings();
 }
 
 /**
  * Settings for the dataPoints
  */
 export class dataPointSettings {
-    // Default color
-    public defaultColor: string = "";
-    // Show all
-    public showAllDataPoints: boolean = true;
-    // Fill
-    public fill: string = "";
-    // Color saturation
-    public fillRule: string = "";
-    // Text Size
-    public fontSize: number = 12;
+    public static defaultColor: string = "";
+    public static showAllDataPoints: boolean = true;
+    public static fill: string = "";
+    public static fillRule: string = "";
+    public static DefaultFontSize: number = 12;
+
 }
 
+
+export class categoryAxisSettings {
+    public show: boolean = true;
+    public angleOffSet: number = -90;
+}
 /**
  * Settings for labeling the categories
  */
 export class categoryLabelSettings {
-    public static DefaultFontSize: number = 12;
     public show: boolean = true;
     public fill: boolean = false;
     public fillColor: string = "#aaa";
-    public fontSize: number = categoryLabelSettings.DefaultFontSize;
+    public fontSize: number = dataPointSettings.DefaultFontSize;
     public maxTextSymbol: number = 25;
     public fontFamily: string = "Arial";
+}
+
+/**
+ * Settings for labeling (and drawing) the data axis
+ */
+export class DataAxisSettings {
+    public minValue: number = 0;
+    public maxValue: number = 100;
+    public steps: number = 4;
+    public stepMode: string = "linear";
+    public innerOffset: number = 0;
+    public clamp: boolean = true;
+    public show: boolean = true;
+    public fill: boolean = false;
+    public fillColor: string = "#aaa";
+    public stroke: string = "#E6E6E6";
+    public strokeWidth: string = "1";
+    public showFilter: boolean = false;
+    public AngleOffset: number = -90;
+}
+
+export class DataAxisLabelsSettings {
+    public show: boolean = true;
+    public fontSize: number = dataPointSettings.DefaultFontSize;
+    public maxTextSymbol: number = 25;
+    public fontFamily: string = "Arial";
+    public color: string = dataPointSettings.defaultColor;
+}
+
+/**
+ * Type for font settings (mainly for labels) ...
+ */
+export class TextSettings {
+    public fontSize: number = dataPointSettings.DefaultFontSize;
+    public maxTextSymbol: number = 25;
+    public fontFamily: string = "Arial";
+    public color: string = dataPointSettings.defaultColor;
 }
 

@@ -55,10 +55,6 @@ import ValueFormatter = valueFormatter.valueFormatter;
 import { manipulation } from "powerbi-visuals-utils-svgutils";
 import translate = manipulation.translate;
 
-// import {
-//     setSize
-// } from "./utilities"
-
 import * as d3 from "d3";
 
 // ---------------------------- A FEW D3 DEFINITIONS ---------------------------------
@@ -76,8 +72,11 @@ import {
 } from "./dataInterfaces";
 
 import {
-    getCategoryAxisHeight
+    getCategoryAxisHeight,
+    getCartFromPolar,
+    getTextSize
 } from "./utilities";
+import { text } from "d3";
 
 
 export class ViEvac_PolarChart implements IVisual {
@@ -100,8 +99,12 @@ export class ViEvac_PolarChart implements IVisual {
 
     // ----------------------------- BASIC SETTINGS --------------------------------------
     private margin: IMargin = { left: 5, right: 5, bottom: 5, top: 5 };
-    private chartSizes: ChartSizes = { vpHeight: 0, vpWidth: 0, radarR: 0, radarCX: 0, radarCy: 0, axisLabelHeight: 0 };
-    private animationDuration: number = 1000;
+    private chartSizes: ChartSizes = { vpHeight: 0, vpWidth: 0, radarR: 0, radarCX: 0, radarCY: 0, axisLabelHeight: 0, angleOffSet: -90 };
+
+    private static animationDuration: number = 1000;
+    private static DataStepMaxLimit: number = 10;
+    private static DataStepMinLimit: number = 1;
+    private static innerOffsetLimitFactor: number = 0.5;
 
     // ----------------------------- USELESS CONSTANTS  ----------------------------------
     private static AttrX: string = "x";
@@ -126,11 +129,14 @@ export class ViEvac_PolarChart implements IVisual {
     private static HtmlObjLine: string = "line";
     private static HtmlObjTspan: string = "tspan";
     private static StTextAnchor: string = "text-anchor";
+    private static StFontSize: string = "font-size";
+    private static StFontFamily: string = "font-family";
     private static StFill: string = "fill";
     private static StOpacity: string = "opacity";
 
     private static ConstEnd: string = "end";
     private static ConstBegin: string = "begin";
+    private static ConstStart: string = "start";
     private static ConstMiddle: string = "middle";
     private static Const0em: string = "0em";
     private static Const071em: string = ".71em";
@@ -141,6 +147,9 @@ export class ViEvac_PolarChart implements IVisual {
     private static ClsDivChart: string = "divViEvac_PolarChart"
     private static ClsSvgChart: string = "svgViEvac_PolarChart"
     private static ClsMainChart: string = "ViEveac_mainChart"
+    private static ClsAxisWrapper: string = "DataAxisWrapper"
+    private static ClsAxisLevels: string = "DataAxisLevels"
+    private static ClsAxisLabels: string = "DataAxisLabels"
 
     /**
      * Converts the PowerBI input data (from the databinding) to a format that we can work with ...
@@ -303,18 +312,103 @@ export class ViEvac_PolarChart implements IVisual {
 
             // and append the main chart as group ...
             this.mainChart = this.svg.append(ViEvac_PolarChart.HtmlObjG)
-                .classed(ViEvac_PolarChart.ClsMainChart, true);
+                .classed(ViEvac_PolarChart.ClsMainChart, true)
+                .attr(ViEvac_PolarChart.AttrTransform, translate(this.chartSizes.radarCX, this.chartSizes.radarCY))
 
+            // next we do care about the background, which means circles ftw ...
+            // we first need to set min and max values for the axis ...
+            if (chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
+                this.settings.dataAxis.minValue = d3.min(chartData.dataPoints, function (d: DataPoint) {
+                    return d.value as number;
+                });
+                this.settings.dataAxis.maxValue = d3.max(chartData.dataPoints, function (d: DataPoint) {
+                    return d.value as number;
+                });
+            }
+            // we need the dataScale and set some settings too ...
+            var dataScale = this.getDataScale(chartData)
+            let DataAxisMinValue = this.settings.dataAxis.minValue
+            let DataAxisMaxValue = this.settings.dataAxis.maxValue
+            let steps = this.settings.dataAxis.steps
 
+            // let's get to the middle of it, won't we? Start by removing and then drawing the axis wrapper group agian ...
+            d3.select("." + ViEvac_PolarChart.ClsAxisWrapper).remove()
+            let axisWrapper = this.mainChart
+                .append(ViEvac_PolarChart.HtmlObjG)
+                .classed(ViEvac_PolarChart.ClsAxisWrapper, true)
 
+            // Filter for the outside glow ...
+            if (this.settings.dataAxis.showFilter) {
+                this.setFilter('glow')
+            }
 
-            // this is simply for testing ...
-            this.mainChart.append('circle')
-                .attr('cx', this.chartSizes.radarCX)
-                .attr('cy', this.chartSizes.radarCy)
-                .attr('r', this.chartSizes.radarR)
-                .attr('stroke', 'black')
-                .attr('fill', '#CCC');
+            axisWrapper.selectAll(ViEvac_PolarChart.ClsAxisLevels)
+                .data(d3.range(0, this.settings.dataAxis.steps + 1).reverse())
+                .enter()
+                .append(ViEvac_PolarChart.HtmlObjCircle)
+                .classed(ViEvac_PolarChart.ClsAxisLevels, true)
+                .attr("r", function (d, i) {
+                    console.log("data", dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d))
+                    return dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d);
+                })
+                .style(ViEvac_PolarChart.StFill, this.settings.dataAxis.fillColor)
+                .style("stroke", this.settings.dataAxis.stroke)
+                .style("stroke-width", this.settings.dataAxis.strokeWidth)
+                .style("filter", (this.settings.dataAxis.showFilter) ? "url(#glow)" : "")
+
+            // we are doing the labels for the axis now ...
+            let angleOffSet = this.settings.categoryAxis.angleOffSet
+            let fontSize = this.settings.dataAxisLabels.fontSize
+            let fontFamily = this.settings.dataAxisLabels.fontFamily
+
+            if (this.settings.dataAxisLabels.show) {
+                axisWrapper.selectAll(ViEvac_PolarChart.ClsAxisLabels)
+                    .data(d3.range(1, this.settings.dataAxis.steps + 1).reverse())
+                    .enter()
+                    .append(ViEvac_PolarChart.HtmlObjText)
+                    .classed(ViEvac_PolarChart.ClsAxisLabels, true)
+                    .attr(ViEvac_PolarChart.AttrX, function (d, i) {
+                        return getCartFromPolar(
+                            dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d),
+                            0,
+                            angleOffSet
+                        ).x
+                    })
+                    .attr(ViEvac_PolarChart.AttrY, function (d, i) {
+                        return getCartFromPolar(
+                            dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d),
+                            0,
+                            angleOffSet
+                        ).y
+                    })
+                    .attr(ViEvac_PolarChart.StFill, this.settings.dataAxisLabels.color)
+                    .style(ViEvac_PolarChart.StFontSize, fontSize)
+                    .style(ViEvac_PolarChart.StFontFamily, fontFamily)
+                    .style(ViEvac_PolarChart.StTextAnchor, (Math.abs(Math.cos(angleOffSet * Math.PI / 180)) < 0) ? ViEvac_PolarChart.ConstStart : ViEvac_PolarChart.ConstEnd)
+                    .text(function (d, i) {
+                        return (DataAxisMaxValue - DataAxisMinValue) / steps * d
+                    })
+                    .attr(ViEvac_PolarChart.AttrDY, function (d, i) {
+                        // calculate the text size and then (depending on the offset angle position the thing ...)
+                        let textSize = getTextSize(
+                            ((DataAxisMaxValue - DataAxisMinValue) / steps * d).toString(),
+                            fontSize,
+                            fontFamily
+                        )
+                        return Math.sin(angleOffSet * Math.PI / 180) * -(textSize.height) +
+                            Math.cos(angleOffSet * Math.PI / 180) * -(textSize.width)
+                    })
+
+                console.log(axisWrapper.selectAll(ViEvac_PolarChart.ClsAxisLabels))
+            }
+
+            // // this is simply for testing ...
+            // this.mainChart.append('circle')
+            //     .attr('cx', this.chartSizes.radarCX)
+            //     .attr('cy', this.chartSizes.radarCy)
+            //     .attr('r', this.chartSizes.radarR)
+            //     .attr('stroke', 'black')
+            //     .attr('fill', '#CCC');
         } catch (ex) {
 
         }
@@ -323,8 +417,21 @@ export class ViEvac_PolarChart implements IVisual {
 
     }
 
+    /**
+     * This is another awesome method too. It converts the settings into something actually usefull. Besides
+     * necessary stuff it also checks for values not set and enters default stuff.
+     * @param dataView 
+     */
+
     private static parseSettings(dataView: DataView): Settings {
-        return Settings.parse(dataView) as Settings;
+        let settings: Settings = Settings.parse(dataView) as Settings;
+
+        // we care about the maximum number of data steps ...
+        settings.dataAxis.steps = Math.min(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMaxLimit)
+        settings.dataAxis.steps = Math.max(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMinLimit)
+        settings.dataAxis.innerOffset = Math.max(settings.dataAxis.innerOffset, 0)
+
+        return settings
     }
 
     /**
@@ -360,10 +467,44 @@ export class ViEvac_PolarChart implements IVisual {
 
         // we now calculate the size and position of the main (polar) chart ...
         this.chartSizes.axisLabelHeight = getCategoryAxisHeight(chartData, this.settings)
-        this.chartSizes.radarR = Math.floor((Math.min(this.chartSizes.vpHeight, this.chartSizes.vpWidth) - 2* this.chartSizes.axisLabelHeight) / 2) - 1 
+        this.chartSizes.radarR = Math.floor((Math.min(this.chartSizes.vpHeight, this.chartSizes.vpWidth) - 2 * this.chartSizes.axisLabelHeight) / 2) - 1
         this.chartSizes.radarCX = (this.chartSizes.vpWidth / 2)
-        this.chartSizes.radarCy = (this.chartSizes.vpHeight / 2)
-        
-        console.log('Sizes', this.chartSizes)
+        this.chartSizes.radarCY = (this.chartSizes.vpHeight / 2)
+        this.chartSizes.angleOffSet = this.settings.categoryAxis.angleOffSet
+    }
+
+    /**
+     * Returns the dataScale 
+     */
+    private getDataScale(chartData: ChartData) {
+        let inputMin: number = this.settings.dataAxis.minValue
+        let inputMax: number = this.settings.dataAxis.maxValue
+        let outputMin: number = this.settings.dataAxis.innerOffset
+        let outputMax: number = this.chartSizes.radarR
+
+        // we also limit the inner offset to a factor set hardcoded by default (half of total size) ...
+        outputMin = Math.min(
+            this.settings.dataAxis.innerOffset,
+            this.chartSizes.radarR * ViEvac_PolarChart.innerOffsetLimitFactor
+        )
+
+        // calculate the axis depending on the mode (ONLY LINEAR ATM) ...
+        if (false) {
+            // placeholder for other modes ...
+        } else {
+            // linear mode is default
+            return d3.scaleLinear()
+                .domain([inputMin, inputMax])
+                .range([outputMin, outputMax])
+                .clamp(this.settings.dataAxis.clamp);
+        }
+    }
+
+    private setFilter(id) {
+        let filter = this.mainChart.append('defs').append('filter').attr('id', id)
+        let feGaussianBlur = filter.append('feGaussianBlur').attr('stdDeviation', '2.5').attr('result', 'coloredBlur')
+        let feMerge = filter.append('feMerge')
+        let feMergeNode_1 = feMerge.append('feMergeNode').attr('in', 'coloredBlur')
+        let feMergeNode_2 = feMerge.append('feMergeNode').attr('in', 'SourceGraphic')
     }
 }

@@ -35,11 +35,13 @@ import TextMeasurementService = textMeasurementService.textMeasurementService;
 
 import {
     ChartData,
-    DataPoint
+    DataPoint,
+    ChartSizes
 } from "./dataInterfaces";
 
 import {
-    Settings
+    Settings,
+    DataAxisSettings
 } from "./settings";
 
 /**
@@ -49,7 +51,7 @@ import {
 export function getCategoryAxisHeight(chartData: ChartData, settings: Settings): number {
 
     // if the axis are turned off, we return 0
-    if (!settings.categoryLabels.show) { return 0}
+    if (!settings.categoryLabels.show) { return 0 }
 
     // first we see what the longest text value is (in characters)... 
     let maxLengthText: powerbi.PrimitiveValue = _.maxBy(chartData.groups.map(v => v.group), "length") || "";
@@ -61,3 +63,52 @@ export function getCategoryAxisHeight(chartData: ChartData, settings: Settings):
         fontFamily: settings.categoryLabels.fontFamily
     });
 }
+
+/**
+ * Function that converts a polar coordinate input (radius and angle) to cartesian coordinates
+ * @param radius Radius of polar coordinates
+ * @param phi Angle of polar coordinates (in degree !)
+ * @param options Options array from the visual which includes the offset parameters for the radar
+ */
+export function getCartFromPolar(radius: number, angle: number, angleOffSet: number) {
+    let phi = (angle + angleOffSet) * Math.PI / 180
+    return {
+        x: radius * Math.cos(phi),
+        y: radius * Math.sin(phi)
+    }
+}
+
+/**
+ * Function that outpus the width and height of a text element
+ * @param chartData 
+ */
+
+export function getTextSize(text: string, fontsize, fontFamily) {
+    let width = TextMeasurementService.measureSvgTextWidth({
+        fontSize: fontsize,
+        fontFamily: fontFamily,
+        text: text
+    })
+
+    let height = TextMeasurementService.measureSvgTextHeight({
+        fontSize: fontsize,
+        fontFamily: fontFamily,
+        text: text
+    })
+
+    return {width: width, height: height}
+}
+
+
+// function computeDimensions(selection) {
+//     var dimensions = null;
+//     var node = selection.node();
+
+//     if (node instanceof SVGElement) { // check if node is svg element
+//       dimensions = node.getBBox();
+//     } else { // else is html element
+//       dimensions = node.getBoundingClientRect();
+//     }
+//     console.log(dimensions);
+//     return dimensions;
+//   }

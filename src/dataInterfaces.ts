@@ -65,6 +65,7 @@ export interface ChartSizes {
     vpWidth: number;
     radarR: number;
     radarCX: number;
-    radarCy: number;
+    radarCY: number;
     axisLabelHeight: number;    
+    angleOffSet: number;
 }
