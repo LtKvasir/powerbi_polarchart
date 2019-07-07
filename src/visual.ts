@@ -533,8 +533,8 @@ export class ViEvac_PolarChart implements IVisual {
                             return arcGenerator({
                                 innerRadius: innerRadius,
                                 outerRadius: outerRadius,
-                                startAngle: d.startIndex * (dataPointAngle + angleOffSet) * Math.PI / 180,
-                                endAngle: d.lastIndex * (dataPointAngle + angleOffSet) * Math.PI / 180
+                                startAngle: (d.startIndex * dataPointAngle + angleOffSet) * Math.PI / 180,
+                                endAngle: (d.lastIndex * dataPointAngle + angleOffSet) * Math.PI / 180
                             })
                         })
                         .attr("fill", "black")
