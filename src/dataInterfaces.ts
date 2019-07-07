@@ -33,6 +33,7 @@ import { numericSequence } from "powerbi-visuals-utils-typeutils";
 
 export interface DataPoint {
     category: powerbi.PrimitiveValue;
+    categorySecondField: powerbi.PrimitiveValue;
     group: Group;
     value: powerbi.PrimitiveValue;
     valueStr: string;
@@ -48,7 +49,8 @@ export interface Group {
 export interface ChartData {
     dataPoints: DataPoint[];
     categories: powerbi.PrimitiveValue[];
-    groups: Group[];
+    categoryFields: powerbi.PrimitiveValue[];
+    groups: powerbi.PrimitiveValue[];
     categoryValueFormatter: IValueFormatter;
     valueFormatter: IValueFormatter;
 }

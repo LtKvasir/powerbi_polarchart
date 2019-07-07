@@ -51,16 +51,16 @@ import {
 export function getCategoryAxisHeight(chartData: ChartData, settings: Settings): number {
 
     // if the axis are turned off, we return 0
-    if (!settings.categoryLabels.show) { return 0 }
+    if (!settings.categoryAxisLabels.show) { return 0 }
 
     // first we see what the longest text value is (in characters)... 
-    let maxLengthText: powerbi.PrimitiveValue = _.maxBy(chartData.groups.map(v => v.group), "length") || "";
+    let maxLengthText: powerbi.PrimitiveValue = _.maxBy(chartData.groups, "length") || "";
 
     // we now return the size (in pixels) d3 needs for this ...
     return TextMeasurementService.measureSvgTextHeight({
-        fontSize: PixelConverter.toString(settings.categoryLabels.fontSize),
+        fontSize: PixelConverter.toString(settings.categoryAxisLabels.fontSize),
         text: maxLengthText.toString().trim(),
-        fontFamily: settings.categoryLabels.fontFamily
+        fontFamily: settings.categoryAxisLabels.fontFamily
     });
 }
 
@@ -82,21 +82,23 @@ export function getCartFromPolar(radius: number, angle: number, angleOffSet: num
  * Function that outpus the width and height of a text element
  * @param chartData 
  */
+export function getTextSize(text: string[], fontsize: number, fontFamily: string) {
+    // first we need the longest text of all ...
+    let maxLengthText: powerbi.PrimitiveValue = _.maxBy(text, "length") || "";
 
-export function getTextSize(text: string, fontsize, fontFamily) {
     let width = TextMeasurementService.measureSvgTextWidth({
-        fontSize: fontsize,
+        fontSize: fontsize.toString(),
         fontFamily: fontFamily,
-        text: text
+        text: maxLengthText
     })
 
     let height = TextMeasurementService.measureSvgTextHeight({
-        fontSize: fontsize,
+        fontSize: fontsize.toString(),
         fontFamily: fontFamily,
-        text: text
+        text: maxLengthText
     })
 
-    return {width: width, height: height}
+    return { width: width, height: height }
 }
 
 

@@ -103,8 +103,50 @@
                 }
             }
         },
-        "categoryLabels": {
-            "displayName": "Category Labels",
+        "categoryAxis": {
+            "displayName": "Category Axis",
+            "displayNameKey": "Visual_CAxis",
+            "properties": {
+                "show": {
+                    "displayName": "Show",
+                    "displayNameKey": "Visual_Show",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "angleOffSet": {
+                    "displayName": "Angle Offset",
+                    "displayNameKey": "Visual_AngleOffSet",
+                    "description": "Offset in degrees for where to start the first item",
+                    "descriptionKey": "Visual_MinValue",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "stroke": {
+                    "displayName": "Stroke Color",
+                    "displayNameKey": "Visual_Stroke",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "strokeWidth": {
+                    "displayName": "Stroke Width",
+                    "displayNameKey": "Visual_Stroke_Width",
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                }
+            }
+        },
+        "categoryAxisLabels": {
+            "displayName": "Category Axis Labels",
             "displayNameKey": "Visual_CLabels",
             "properties": {
                 "show": {
@@ -240,6 +282,13 @@
                 "show": {
                     "displayName": "Show",
                     "displayNameKey": "Visual_Show",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "invert": {
+                    "displayName": "Invert Values",
+                    "displayNameKey": "Visual_InvertValues",
                     "type": {
                         "bool": true
                     }
@@ -480,28 +529,6 @@
                     }
                 }
             }
-        },
-        "categoryAxis": {
-            "displayName": "Category Axis",
-            "displayNameKey": "Visual_CAxis",
-            "properties": {
-                "show": {
-                    "displayName": "Show",
-                    "displayNameKey": "Visual_Show",
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "angleOffSet": {
-                    "displayName": "Angle Offset",
-                    "displayNameKey": "Visual_AngleOffSet",
-                    "description": "Offset in degrees for where to start the first item",
-                    "descriptionKey": "Visual_MinValue",
-                    "type": {
-                        "numeric": true
-                    }
-                }
-            }
-        }
+        }        
     }
 }

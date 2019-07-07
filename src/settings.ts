@@ -35,7 +35,7 @@ import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 export class Settings extends DataViewObjectsParser {
     public dataPoint: dataPointSettings = new dataPointSettings();
     public categoryAxis: categoryAxisSettings = new categoryAxisSettings();
-    public categoryLabels: categoryLabelSettings = new categoryLabelSettings();
+    public categoryAxisLabels: categoryLabelSettings = new categoryLabelSettings();
     public dataAxis: DataAxisSettings = new DataAxisSettings();
     public dataAxisLabels: DataAxisLabelsSettings = new DataAxisLabelsSettings();
 }
@@ -56,6 +56,8 @@ export class dataPointSettings {
 export class categoryAxisSettings {
     public show: boolean = true;
     public angleOffSet: number = -90;
+    public stroke: string = "#E6E6E6";
+    public strokeWidth: string = "1";
 }
 /**
  * Settings for labeling the categories
@@ -73,6 +75,7 @@ export class categoryLabelSettings {
  * Settings for labeling (and drawing) the data axis
  */
 export class DataAxisSettings {
+    public invert: boolean = true;
     public minValue: number = 0;
     public maxValue: number = 100;
     public steps: number = 4;
