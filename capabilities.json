@@ -142,7 +142,16 @@
                             "fontSize": true
                         }
                     }
-                }
+                },
+                "cornerRadius": {
+                    "displayName": "Corner Radius",
+                    "displayNameKey": "Visual_CornerRadius",
+                    "description": "Corner radius for the segments in pixels",
+                    "descriptionKey": "Visual_CornerRadius",
+                    "type": {
+                        "numeric": true
+                    }
+                } 
             }
         },
         "categoryAxisLabels": {

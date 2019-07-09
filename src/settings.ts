@@ -52,13 +52,17 @@ export class dataPointSettings {
 
 }
 
-
+/**
+ * Settings for the category axis
+ */
 export class categoryAxisSettings {
     public show: boolean = true;
     public angleOffSet: number = -90;
     public stroke: string = "#E6E6E6";
-    public strokeWidth: string = "1";
+    public strokeWidth: number = 1;
+    public cornerRadius: number = 10;
 }
+
 /**
  * Settings for labeling the categories
  */

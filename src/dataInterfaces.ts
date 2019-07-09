@@ -71,3 +71,10 @@ export interface ChartSizes {
     axisLabelHeight: number;    
     angleOffSet: number;
 }
+
+export interface BgSegment {
+    innerRadius: number,
+    outerRadius: number,
+    startAngle: number,
+    endAngle: number;
+}

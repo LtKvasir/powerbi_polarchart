@@ -50,12 +50,14 @@ import {
 import { pixelConverter as PixelConverter } from "powerbi-visuals-utils-typeutils";
 import { valueFormatter, textMeasurementService } from "powerbi-visuals-utils-formattingutils";
 import IValueFormatter = valueFormatter.IValueFormatter;
-import ValueFormatter = valueFormatter.valueFormatter;
+// import { createLinearColorScale, LinearColorScale, ColorHelper } from "powerbi-visuals-utils-colorutils";
+// import { axis } from "powerbi-visuals-utils-chartutils";
 
 import { manipulation } from "powerbi-visuals-utils-svgutils";
 import translate = manipulation.translate;
 
 import * as d3 from "d3";
+
 
 // ---------------------------- A FEW D3 DEFINITIONS ---------------------------------
 type Selection<T> = d3.Selection<any, T, any, any>;
@@ -68,7 +70,7 @@ import {
 } from "./settings";
 
 import {
-    IMargin, ChartSizes, ChartData, DataPoint
+    IMargin, ChartSizes, ChartData, DataPoint, BgSegment
 } from "./dataInterfaces";
 
 import {
@@ -77,6 +79,7 @@ import {
     getTextSize
 } from "./utilities";
 import { text } from "d3";
+import { numberFormat } from "powerbi-visuals-utils-formattingutils/lib/src/formattingService/formattingService";
 
 
 export class ViEvac_PolarChart implements IVisual {
@@ -112,6 +115,8 @@ export class ViEvac_PolarChart implements IVisual {
     // ----------------------------- USELESS CONSTANTS  ----------------------------------
     private static AttrX: string = "x";
     private static AttrY: string = "y";
+    private static AttrCX: string = "cx";
+    private static AttrCY: string = "cy";
     private static AttrX1: string = "x1";
     private static AttrY1: string = "y1";
     private static AttrX2: string = "x2";
@@ -158,6 +163,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static ClsAxisLevels: string = "DataAxisLevels"
     private static ClsAxisLabels: string = "DataAxisLabels"
     private static ClsCategoryAxisLines: string = "CategoryAxisLines"
+    private static ClsCategoryAxisSegments: string = "CategoryAxisSegments"
     private static ClsCategoryAxisLabels: string = "CategoryAxisLabels"
 
     /**
@@ -185,17 +191,17 @@ export class ViEvac_PolarChart implements IVisual {
 
         // now we need some things be defined correctly ...
         let categoryValueFormatter: IValueFormatter;
-        let valueFormatter: IValueFormatter;
+        let valuesFormatter: IValueFormatter;
         let dataPoints: DataPoint[] = [];
 
         // We create the formatter that helps us then to output the correct types and format ...
-        categoryValueFormatter = ValueFormatter.create({
-            format: ValueFormatter.getFormatStringByColumn(dataView.categorical.categories[0].source),
+        categoryValueFormatter = valueFormatter.create({
+            format: valueFormatter.getFormatStringByColumn(dataView.categorical.categories[0].source),
             value: dataView.categorical.categories[0].values[0]
         });
 
-        valueFormatter = ValueFormatter.create({
-            format: ValueFormatter.getFormatStringByColumn(dataView.categorical.values[0].source),
+        valuesFormatter = valueFormatter.create({
+            format: valueFormatter.getFormatStringByColumn(dataView.categorical.values[0].source),
             value: dataView.categorical.values[0].values[0]
 
         });
@@ -205,7 +211,7 @@ export class ViEvac_PolarChart implements IVisual {
             // now cycle through every group (group) within the category
             dataView.categorical.values.forEach((groupArray) => {
                 // get the formatting (why ever) ...
-                let groupFormatter = ValueFormatter.create({
+                let groupFormatter = valueFormatter.create({
                     format: groupArray.source.format,
                     value: dataView.categorical.values[0].values[0]
                 });
@@ -232,7 +238,7 @@ export class ViEvac_PolarChart implements IVisual {
                     },
                     {
                         displayName: `Value`,
-                        value: groupFormatter.format(value)
+                        value: valuesFormatter.format(value)
                     }]
                 } else {
                     // only one category field ...
@@ -247,7 +253,7 @@ export class ViEvac_PolarChart implements IVisual {
                     },
                     {
                         displayName: `Value`,
-                        value: groupFormatter.format(value)
+                        value: valuesFormatter.format(value)
                     }]
                 }
 
@@ -360,6 +366,19 @@ export class ViEvac_PolarChart implements IVisual {
             let DataAxisMaxValue = this.settings.dataAxis.maxValue
             let steps = this.settings.dataAxis.steps
 
+            // a few data related variables ...
+            let categorySizes = chartData.categories.map(value => {
+                let lastIdx = (chartData.dataPoints.map(v => v.category).lastIndexOf(value))
+                let firstIdx = (chartData.dataPoints.map(v => v.category).indexOf(value))
+                return {
+                    category: value,
+                    size: lastIdx - firstIdx + 1,
+                    startIndex: firstIdx,
+                    lastIndex: lastIdx
+                }
+            })
+
+
             // and also a scale ...
             var dataScale = this.getDataScale(chartData)
 
@@ -370,7 +389,7 @@ export class ViEvac_PolarChart implements IVisual {
 
 
             // ---------------------------------------------------------------------------------
-            // next we do care about the background, which means circles ftw ...
+            // next we do care about the background, which means circles (update: arcs) ftw ...
             // ---------------------------------------------------------------------------------
             // we first need to set min and max values for the axis ...
             if (chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
@@ -382,38 +401,76 @@ export class ViEvac_PolarChart implements IVisual {
                 });
             }
 
-            // let's get to the middle of it, won't we? Start by removing and then drawing the axis wrapper group agian ...
+            // let's get to the middle of it, won't we? Start by removing and then drawing the axis wrapper group again ...
             d3.select("." + ViEvac_PolarChart.ClsAxisWrapper).remove()
             let axisWrapper = this.mainChart
                 .append(ViEvac_PolarChart.HtmlObjG)
                 .classed(ViEvac_PolarChart.ClsAxisWrapper, true)
 
-            if (this.settings.dataAxis.show) {
+            // Filter for the outside glow ...
+            if (this.settings.dataAxis.showFilter) {
+                this.setFilter('glow')
+            }
 
-                // Filter for the outside glow ...
-                if (this.settings.dataAxis.showFilter) {
-                    this.setFilter('glow')
-                }
+            // ---------------------------------------------------------------------------------
+            // do we want category and data axis ?? - If so, we'll do 'em ...
+            // ---------------------------------------------------------------------------------
+            if (this.settings.categoryAxis.show) {
 
-                // we do need dummy data for the circles in the order of inversion (is this correct english?) ...
-                let bgCircleData = d3.range(0, this.settings.dataAxis.steps + 1)
-                if (!this.settings.dataAxis.invert) {
-                    bgCircleData = bgCircleData.reverse()
-                }
-
-                axisWrapper.selectAll(ViEvac_PolarChart.ClsAxisLevels)
-                    .data(bgCircleData)
-                    .enter()
-                    .append(ViEvac_PolarChart.HtmlObjCircle)
+                // we do need a background circle for everything (that also defines the spaces between areas) ...
+                axisWrapper.append(ViEvac_PolarChart.HtmlObjCircle)
                     .classed(ViEvac_PolarChart.ClsAxisLevels, true)
-                    .attr("r", function (d, i) {
-                        return dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d);
+                    .attr(ViEvac_PolarChart.AttrCX, 0)
+                    .attr(ViEvac_PolarChart.AttrCY, 0)
+                    .attr("r", dataScale((this.settings.dataAxis.invert) ? DataAxisMinValue : DataAxisMaxValue) - Math.floor(Number(this.settings.categoryAxis.strokeWidth) / 2) - 1)
+                    .style(ViEvac_PolarChart.StFill, this.settings.categoryAxis.stroke)
+                    .style("filter", (this.settings.dataAxis.showFilter) ? "url(#glow)" : "")
+
+                // we also need dummy data now for each and every segment ...
+                let bgSegments: BgSegment[] = [];
+                var padAngle = this.settings.categoryAxis.strokeWidth / 100
+                var myArcGenerator = d3.arc()
+                    .cornerRadius(this.settings.categoryAxis.cornerRadius)
+                    .padRadius(100)
+
+
+                // loop through all rings and all categories and push the bgSegments array ...
+                for (var ring = 0; ring < this.settings.dataAxis.steps; ring++) {
+                    let innerRadius = dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * ring + DataAxisMinValue)
+                    let outerRadius = dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * (ring + 1) + DataAxisMinValue)
+                    categorySizes.forEach(category => {
+                        bgSegments.push(
+                            {
+                                innerRadius: ((this.settings.dataAxis.invert) ? outerRadius : innerRadius) + Math.ceil(Number(this.settings.categoryAxis.strokeWidth) / 2),
+                                outerRadius: ((this.settings.dataAxis.invert) ? innerRadius : outerRadius) - Math.floor(Number(this.settings.categoryAxis.strokeWidth) / 2),
+                                startAngle: (category.startIndex * dataPointAngle + angleOffSet + 90) * Math.PI / 180,
+                                endAngle: ((category.lastIndex + 1) * dataPointAngle + angleOffSet + 90) * Math.PI / 180
+                            }
+                        )
+                    })
+                };
+
+                console.log("BG", bgSegments)
+
+                // now add the segments ... yeeehaaaaa ...
+                axisWrapper.selectAll(ViEvac_PolarChart.ClsCategoryAxisSegments)
+                    .data(bgSegments)
+                    .enter().append(ViEvac_PolarChart.HtmlObjPath)
+                    .classed(ViEvac_PolarChart.ClsCategoryAxisSegments, true)
+                    .attr("id", function (d, i) { return ViEvac_PolarChart.ClsCategoryAxisLabels + i; }) //Unique id for each slice
+                    .attr("d", function (d, i) {
+                        console.log("Arc", d.innerRadius)
+                        return myArcGenerator({
+                            innerRadius: d.innerRadius,
+                            outerRadius: d.outerRadius,
+                            startAngle: d.startAngle,
+                            endAngle: d.endAngle,
+                            padAngle: padAngle,
+                        })
                     })
                     .style(ViEvac_PolarChart.StFill, this.settings.dataAxis.fillColor)
-                    .style("stroke", this.settings.dataAxis.stroke)
-                    .style("stroke-width", this.settings.dataAxis.strokeWidth)
-                    .style("filter", (this.settings.dataAxis.showFilter) ? "url(#glow)" : "")
             }
+
             // ---------------------------------------------------------------------------------
             // plot the Labels for the Data Axis ...
             // ---------------------------------------------------------------------------------
@@ -423,7 +480,7 @@ export class ViEvac_PolarChart implements IVisual {
                 let fontFamily = this.settings.dataAxisLabels.fontFamily
                 let labelArray = getTextSize(
                     d3.range(1, this.settings.dataAxis.steps + 1).reverse().map(d => {
-                        return ((DataAxisMaxValue - DataAxisMinValue) / steps * d).toString()
+                        return ((DataAxisMaxValue - DataAxisMinValue) / steps * d + DataAxisMinValue).toString()
                     }),
                     fontSize,
                     fontFamily
@@ -443,14 +500,14 @@ export class ViEvac_PolarChart implements IVisual {
                     .classed(ViEvac_PolarChart.ClsAxisLabels, true)
                     .attr(ViEvac_PolarChart.AttrX, function (d, i) {
                         return getCartFromPolar(
-                            dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d),
+                            dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d + DataAxisMinValue),
                             0,
                             angleOffSet
                         ).x
                     })
                     .attr(ViEvac_PolarChart.AttrY, function (d, i) {
                         return getCartFromPolar(
-                            dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d),
+                            dataScale((DataAxisMaxValue - DataAxisMinValue) / steps * d + DataAxisMinValue),
                             0,
                             angleOffSet
                         ).y
@@ -472,46 +529,6 @@ export class ViEvac_PolarChart implements IVisual {
             }
 
             // ---------------------------------------------------------------------------------
-            // plot the category axis things. Starting with the lines moving outside ...
-            // ---------------------------------------------------------------------------------
-            // calculate our category sizes ...
-            let categorySizes = chartData.categories.map(value => {
-                let lastIdx = (chartData.dataPoints.map(v => v.category).lastIndexOf(value))
-                let firstIdx = (chartData.dataPoints.map(v => v.category).indexOf(value))
-                return {
-                    category: value,
-                    size: lastIdx - firstIdx + 1,
-                    startIndex: firstIdx,
-                    lastIndex: lastIdx
-                }
-            })
-
-            if (this.settings.categoryAxis.show) {
-                // do the lines ...
-                axisWrapper.selectAll(ViEvac_PolarChart.ClsCategoryAxisLines)
-                    .data(categorySizes)
-                    .enter()
-                    .append(ViEvac_PolarChart.HtmlObjLine)
-                    .classed(ViEvac_PolarChart.ClsCategoryAxisLines, true)
-                    .attr(ViEvac_PolarChart.AttrX1, function (d) {
-                        return getCartFromPolar(dataScale(DataAxisMinValue), d.startIndex * dataPointAngle, angleOffSet).x
-                    })
-                    .attr(ViEvac_PolarChart.AttrY1, function (d, i) {
-                        return getCartFromPolar(dataScale(DataAxisMinValue), d.startIndex * dataPointAngle, angleOffSet).y
-                    })
-                    .attr(ViEvac_PolarChart.AttrX2, function (d, i) {
-                        return getCartFromPolar(dataScale(DataAxisMaxValue), d.startIndex * dataPointAngle, angleOffSet).x
-                    })
-                    .attr(ViEvac_PolarChart.AttrY2, function (d, i) {
-                        return getCartFromPolar(dataScale(DataAxisMaxValue), d.startIndex * dataPointAngle, angleOffSet).y
-                    })
-                    .style(ViEvac_PolarChart.StStroke, this.settings.categoryAxis.stroke)
-                    .style(ViEvac_PolarChart.StStrokeWidth, this.settings.categoryAxis.strokeWidth)
-
-                console.log("ChartData", categorySizes)
-            }
-
-            // ---------------------------------------------------------------------------------
             // now plot the category axis labels (which actually is quite tricky) ...
             // ---------------------------------------------------------------------------------
             if (this.settings.categoryAxisLabels) {
@@ -520,9 +537,8 @@ export class ViEvac_PolarChart implements IVisual {
                 } else {
                     // we have two dimensional data which means we will place arcs outside the circle to add labels
                     // We start by defining arcs for the text paths ...
-                    var arcGenerator = d3.arc()
-                    let innerRadius = dataScale(DataAxisMaxValue)
-                    let outerRadius = dataScale(DataAxisMaxValue) + this.chartSizes.axisLabelHeight
+                    let innerRadius = dataScale((this.settings.dataAxis.invert) ? DataAxisMinValue : DataAxisMaxValue)
+                    let outerRadius = dataScale((this.settings.dataAxis.invert) ? DataAxisMinValue : DataAxisMaxValue) + this.chartSizes.axisLabelHeight
 
                     axisWrapper.selectAll(ViEvac_PolarChart.ClsCategoryAxisLabels)
                         .data(categorySizes)
@@ -530,11 +546,11 @@ export class ViEvac_PolarChart implements IVisual {
                         .classed(ViEvac_PolarChart.ClsCategoryAxisLabels, true)
                         .attr("id", function (d, i) { return ViEvac_PolarChart.ClsCategoryAxisLabels + i; }) //Unique id for each slice
                         .attr("d", function (d, i) {
-                            return arcGenerator({
+                            return myArcGenerator({
                                 innerRadius: innerRadius,
                                 outerRadius: outerRadius,
-                                startAngle: (d.startIndex * dataPointAngle + angleOffSet) * Math.PI / 180,
-                                endAngle: (d.lastIndex * dataPointAngle + angleOffSet) * Math.PI / 180
+                                startAngle: (d.startIndex * dataPointAngle + angleOffSet + 90) * Math.PI / 180,
+                                endAngle: ((d.lastIndex + 1) * dataPointAngle + angleOffSet + 90) * Math.PI / 180
                             })
                         })
                         .attr("fill", "black")
