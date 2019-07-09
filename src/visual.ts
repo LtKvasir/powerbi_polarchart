@@ -71,13 +71,14 @@ import {
 } from "./settings";
 
 import {
-    IMargin, ChartSizes, ChartData, DataPoint, BgSegment, IColorArray
+    IMargin, ChartSizes, ChartData, DataPoint, BgSegment, IColorArray, IColorBrewerSettings
 } from "./dataInterfaces";
 
 import {
     getCategoryAxisHeight,
     getCartFromPolar,
-    getTextSize
+    getTextSize,
+    getColorScale
 } from "./utilities";
 import { text } from "d3";
 import { numberFormat } from "powerbi-visuals-utils-formattingutils/lib/src/formattingService/formattingService";
@@ -114,6 +115,8 @@ export class ViEvac_PolarChart implements IVisual {
     private static LabelOffsetDX: number = 2;
     private static LabelOffsetDY: number = 2;
 
+    private CategoryLabelOffset: number = 5;
+
     // ----------------------------- USELESS CONSTANTS  ----------------------------------
     private static AttrX: string = "x";
     private static AttrY: string = "y";
@@ -139,6 +142,8 @@ export class ViEvac_PolarChart implements IVisual {
     private static HtmlObjLine: string = "line";
     private static HtmlObjTspan: string = "tspan";
     private static HtmlObjPath: string = "path";
+    private static HtmlPathLink: string = "xlink:href";
+    private static HtmlTextPath: string = "textPath";
 
     private static StTextAnchor: string = "text-anchor";
     private static StFontSize: string = "font-size";
@@ -167,6 +172,9 @@ export class ViEvac_PolarChart implements IVisual {
     private static ClsCategoryAxisLines: string = "CategoryAxisLines"
     private static ClsCategoryAxisSegments: string = "CategoryAxisSegments"
     private static ClsCategoryAxisLabels: string = "CategoryAxisLabels"
+    private static ClsCategoryAxisLabelTexts: string = "CategoryAxisLabelText"
+    private static ClsCategorySegment: string = "CatSegment_"
+    private static ClsDataRing: string = "DataRing_"
 
     /**
      * Converts the PowerBI input data (from the databinding) to a format that we can work with ...
@@ -446,22 +454,42 @@ export class ViEvac_PolarChart implements IVisual {
                                 innerRadius: ((this.settings.dataAxis.invert) ? outerRadius : innerRadius) + Math.ceil(Number(this.settings.categoryAxis.strokeWidth) / 2),
                                 outerRadius: ((this.settings.dataAxis.invert) ? innerRadius : outerRadius) - Math.floor(Number(this.settings.categoryAxis.strokeWidth) / 2),
                                 startAngle: (category.startIndex * dataPointAngle + angleOffSet + 90) * Math.PI / 180,
-                                endAngle: ((category.lastIndex + 1) * dataPointAngle + angleOffSet + 90) * Math.PI / 180
+                                endAngle: ((category.lastIndex + 1) * dataPointAngle + angleOffSet + 90) * Math.PI / 180,
+                                category: category.category,
+                                ring: ring
                             }
                         )
                     })
                 };
 
-                console.log("BG", bgSegments)
+                // we need a color scale for the rings ...
+                let bgSegmentColorAxis = getColorScale({
+                    inputMin: 0,
+                    inputMax: this.settings.dataAxis.steps,
+                    steps: this.settings.dataAxis.steps,
+                    usebrewer: this.settings.dataAxis.enableColorbrewer,
+                    brewer: this.settings.dataAxis.colorbrewer,
+                    gradientStart: this.settings.dataAxis.gradientStart,
+                    gradientEnd: this.settings.dataAxis.gradientEnd
+                })
 
                 // now add the segments ... yeeehaaaaa ...
                 axisWrapper.selectAll(ViEvac_PolarChart.ClsCategoryAxisSegments)
                     .data(bgSegments)
                     .enter().append(ViEvac_PolarChart.HtmlObjPath)
-                    .classed(ViEvac_PolarChart.ClsCategoryAxisSegments, true)
-                    .attr("id", function (d, i) { return ViEvac_PolarChart.ClsCategoryAxisLabels + i; }) //Unique id for each slice
+                    .attr("class", function (d) {
+                        // add classes: a generic one, and one for segment and ring each ...
+                        let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category
+                        let clsRing: string = ViEvac_PolarChart.ClsDataRing + d.innerRadius.toString()
+                        return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
+                    })
+                    .attr("id", function (d) {
+                        //Also add a unique ID for each slice, which we probably won't need here ...
+                        let segmentID = d.category
+                        let ringID = d.innerRadius
+                        return ViEvac_PolarChart.ClsCategoryAxisLabels + "_" + segmentID + "_" + ringID;
+                    })
                     .attr("d", function (d, i) {
-                        console.log("Arc", d.innerRadius)
                         return myArcGenerator({
                             innerRadius: d.innerRadius,
                             outerRadius: d.outerRadius,
@@ -470,7 +498,7 @@ export class ViEvac_PolarChart implements IVisual {
                             padAngle: padAngle,
                         })
                     })
-                    .style(ViEvac_PolarChart.StFill, this.settings.dataAxis.fillColor)
+                    .style(ViEvac_PolarChart.StFill, function (d) { return bgSegmentColorAxis.scale(d.ring) })
             }
 
             // ---------------------------------------------------------------------------------
@@ -539,32 +567,97 @@ export class ViEvac_PolarChart implements IVisual {
                 } else {
                     // we have two dimensional data which means we will place arcs outside the circle to add labels
                     // We start by defining arcs for the text paths ...
-                    let innerRadius = dataScale((this.settings.dataAxis.invert) ? DataAxisMinValue : DataAxisMaxValue)
-                    let outerRadius = dataScale((this.settings.dataAxis.invert) ? DataAxisMinValue : DataAxisMaxValue) + this.chartSizes.axisLabelHeight
+                    let innerRadius = dataScale((this.settings.dataAxis.invert) ? DataAxisMinValue : DataAxisMaxValue) + this.CategoryLabelOffset
+                    let outerRadius = dataScale((this.settings.dataAxis.invert) ? DataAxisMinValue : DataAxisMaxValue) + this.chartSizes.axisLabelHeight + this.CategoryLabelOffset
+
+                    // we do need a new arc generator as we may not have rounded corners (to extract arcs) ...
+                    var labelArcGenerator = d3.arc()
+                        .cornerRadius(0)
+                        .padRadius(100)
 
                     axisWrapper.selectAll(ViEvac_PolarChart.ClsCategoryAxisLabels)
                         .data(categorySizes)
                         .enter().append(ViEvac_PolarChart.HtmlObjPath)
                         .classed(ViEvac_PolarChart.ClsCategoryAxisLabels, true)
-                        .attr("id", function (d, i) { return ViEvac_PolarChart.ClsCategoryAxisLabels + i; }) //Unique id for each slice
                         .attr("d", function (d, i) {
-                            return myArcGenerator({
+                            return labelArcGenerator({
                                 innerRadius: innerRadius,
                                 outerRadius: outerRadius,
                                 startAngle: (d.startIndex * dataPointAngle + angleOffSet + 90) * Math.PI / 180,
-                                endAngle: ((d.lastIndex + 1) * dataPointAngle + angleOffSet + 90) * Math.PI / 180
+                                endAngle: ((d.lastIndex + 1) * dataPointAngle + angleOffSet + 90) * Math.PI / 180,
                             })
                         })
-                        .attr("fill", "black")
+                        .style("fill", (this.settings.categoryAxisLabels.fill) ? this.settings.categoryAxisLabels.fillColor : "none")
+                        .each(function (d, i) {
+                            // remove all path lines of the arc except the outer one ...
+                            var firstArcSection = /(^.+?)L/;
+                            var newArc = firstArcSection.exec(d3.select(this).attr("d"))[1];
+                            newArc = newArc.replace(/,/g, " ");
 
-                    console.log("Wrapper", axisWrapper.selectAll(ViEvac_PolarChart.ClsCategoryAxisLabels))
+                            // flip text in the lower half of the radar ...
+                            let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
+                            if (Math.sin(lastAngle) > 0) {
+
+                                // get the path details ...
+                                var startLoc = /M(.*?)A/;
+                                var middleLoc = /A(.*?)0 0 1/;
+                                var endLoc = /0 0 1 (.*?)$/;
+
+                                //Flip the direction of the arc by switching the start and end point
+                                //and using a 0 (instead of 1) sweep flag
+                                var newStart = endLoc.exec(newArc)[1];
+                                var newEnd = startLoc.exec(newArc)[1];
+                                var middleSec = middleLoc.exec(newArc)[1];
+
+                                //Build up the new arc notation, set the sweep-flag to 0
+                                newArc = "M" + newStart + "A" + middleSec + "0 0 0 " + newEnd;
+                            }
+
+                            // now create a new path we want to add our text to ...
+                            axisWrapper.append(ViEvac_PolarChart.HtmlObjPath)
+                                .classed(ViEvac_PolarChart.ClsCategoryAxisLabels, true)
+                                .attr("id", ViEvac_PolarChart.ClsCategoryAxisLabels + i)
+                                .attr("d", newArc)
+                                .style("fill", "none")
+                        })
+
+                    // now append the category names to the arcs ...
+                    let textOrientation = "2%"
+                    if (this.settings.categoryAxisLabels.orientation == "middle") {
+                        textOrientation = "50%"
+                    } else if (this.settings.categoryAxisLabels.orientation == "end") {
+                        textOrientation = "98%"
+                    }
+
+                    // we create the arcs for the labels. As we want to be able to center the text this is going to be tricky
+                    // and done with cut arc paths by regular expressions ...
+                    let chartDY = this.chartSizes.axisLabelHeight
+
+                    axisWrapper.selectAll(ViEvac_PolarChart.ClsCategoryAxisLabelTexts)
+                        .data(categorySizes)
+                        .enter().append(ViEvac_PolarChart.HtmlObjText)
+                        .classed(ViEvac_PolarChart.ClsCategoryAxisLabelTexts, true)
+                        .attr(ViEvac_PolarChart.AttrDY, function (d) {
+                            let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
+                            return (Math.sin(lastAngle) > 0) ? -chartDY / 2 : chartDY
+                        })
+                        .append(ViEvac_PolarChart.HtmlTextPath)
+                        .attr("startOffset", textOrientation)
+                        .attr(ViEvac_PolarChart.HtmlPathLink, function (d, i) {
+                            // link to the ID of the path ...
+                            return "#" + ViEvac_PolarChart.ClsCategoryAxisLabels + i
+                        })
+                        .text(function (d) { return d.category.toString() })
+                        .attr(ViEvac_PolarChart.StFill, this.settings.categoryAxisLabels.color)
+                        .style(ViEvac_PolarChart.StTextAnchor, this.settings.categoryAxisLabels.orientation)
+                        .style(ViEvac_PolarChart.StFontSize, this.settings.categoryAxisLabels.fontSize)
+                        .style(ViEvac_PolarChart.StFontFamily, this.settings.categoryAxisLabels.fontFamily)
                 }
             }
 
+            
+            // remove after finish ...
             console.log("ChartData", chartData)
-
-
-
         } catch (ex) {
 
         }
@@ -585,7 +678,7 @@ export class ViEvac_PolarChart implements IVisual {
         // we care about the maximum number of data steps ...
         settings.dataAxis.steps = Math.min(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMaxLimit)
         settings.dataAxis.steps = Math.max(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMinLimit)
-        settings.dataAxis.innerOffset = Math.max(settings.dataAxis.innerOffset, 0)
+        settings.innerCircle.innerOffset = Math.max(settings.innerCircle.innerOffset, 0)
 
         // we do some stuff to make sure the colorbrewing works for us ...
         if (!settings.dataAxis.enableColorbrewer) {
@@ -650,7 +743,7 @@ export class ViEvac_PolarChart implements IVisual {
 
         // we now calculate the size and position of the main (polar) chart ...
         this.chartSizes.axisLabelHeight = getCategoryAxisHeight(chartData, this.settings)
-        this.chartSizes.radarR = Math.floor((Math.min(this.chartSizes.vpHeight, this.chartSizes.vpWidth) - 2 * this.chartSizes.axisLabelHeight) / 2) - 1
+        this.chartSizes.radarR = Math.floor((Math.min(this.chartSizes.vpHeight, this.chartSizes.vpWidth) - 2 * this.chartSizes.axisLabelHeight - this.CategoryLabelOffset) / 2) - 1
         this.chartSizes.radarCX = (this.chartSizes.vpWidth / 2)
         this.chartSizes.radarCY = (this.chartSizes.vpHeight / 2)
         this.chartSizes.angleOffSet = this.settings.categoryAxis.angleOffSet
@@ -662,12 +755,12 @@ export class ViEvac_PolarChart implements IVisual {
     private getDataScale(chartData: ChartData) {
         let inputMin: number = this.settings.dataAxis.minValue
         let inputMax: number = this.settings.dataAxis.maxValue
-        let outputMin: number = this.settings.dataAxis.innerOffset
+        let outputMin: number = this.settings.innerCircle.innerOffset
         let outputMax: number = this.chartSizes.radarR
 
         // we also limit the inner offset to a factor set hardcoded by default (half of total size) ...
         outputMin = Math.min(
-            this.settings.dataAxis.innerOffset,
+            this.settings.innerCircle.innerOffset,
             this.chartSizes.radarR * ViEvac_PolarChart.innerOffsetLimitFactor
         )
 

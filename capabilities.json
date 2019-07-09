@@ -151,7 +151,7 @@
                     "type": {
                         "numeric": true
                     }
-                } 
+                }
             }
         },
         "categoryAxisLabels": {
@@ -281,6 +281,79 @@
                             }
                         ]
                     }
+                },
+                "orientation": {
+                    "displayName": "Text Orientation",
+                    "displayNameKey": "Visual_TextOrientation",
+                    "description": "Text Orientation",
+                    "descriptionKey": "Visual_TextOrientation",
+                    "type": {
+                        "enumeration": [
+                            {
+                                "displayName": "Left",
+                                "value": "begin"
+                            },
+                            {
+                                "displayName": "Middle",
+                                "value": "middle"
+                            },
+                            {
+                                "displayName": "Right",
+                                "value": "end"
+                            }
+                        ]
+                    }
+                },
+                "color": {
+                    "displayName": "Text Color",
+                    "displayNameKey": "Visual_TextColor",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "innerCircle": {
+            "displayName": "Inner Circle",
+            "displayNameKey": "Visual_InnerCircle",
+            "properties": {
+                "show": {
+                    "displayName": "Show",
+                    "displayNameKey": "Visual_Show",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "innerOffset": {
+                    "displayName": "Inner Offset",
+                    "displayNameKey": "Visual_innerOffset",
+                    "description": "Offset in Pixels from the center of the circle to the data maximum",
+                    "descriptionKey": "Visual_innerOffset",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "fill": {
+                    "displayName": "Fill",
+                    "displayNameKey": "Visual_Fill",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "fillColor": {
+                    "displayName": "Color",
+                    "displayNameKey": "Visual_LabelsFill",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -347,59 +420,12 @@
                         ]
                     }
                 },
-                "innerOffset": {
-                    "displayName": "Inner Offset",
-                    "displayNameKey": "Visual_innerOffset",
-                    "description": "Offset in Pixels from the center of the circle to the data maximum",
-                    "descriptionKey": "Visual_innerOffset",
-                    "type": {
-                        "numeric": true
-                    }
-                },
                 "clamp": {
                     "displayName": "Clamp",
                     "displayNameKey": "Visual_Clamp",
                     "description": "Limit data points out of range to range limits",
                     "type": {
                         "bool": true
-                    }
-                },
-                "fill": {
-                    "displayName": "Fill",
-                    "displayNameKey": "Visual_Fill",
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "fillColor": {
-                    "displayName": "Color",
-                    "displayNameKey": "Visual_LabelsFill",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "stroke": {
-                    "displayName": "Stroke Color",
-                    "displayNameKey": "Visual_Stroke",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "strokeWidth": {
-                    "displayName": "Stroke Width",
-                    "displayNameKey": "Visual_Stroke_Width",
-                    "type": {
-                        "formatting": {
-                            "fontSize": true
-                        }
                     }
                 },
                 "showFilter": {
@@ -715,6 +741,6 @@
                     }
                 }
             }
-        }        
+        }
     }
 }

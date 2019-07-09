@@ -73,10 +73,12 @@ export interface ChartSizes {
 }
 
 export interface BgSegment {
-    innerRadius: number,
-    outerRadius: number,
-    startAngle: number,
+    innerRadius: number;
+    outerRadius: number;
+    startAngle: number;
     endAngle: number;
+    category: powerbi.PrimitiveValue;
+    ring: number;
 }
 
 export interface IColorArray {

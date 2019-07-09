@@ -42,6 +42,7 @@ export class Settings extends DataViewObjectsParser {
     public categoryAxisLabels: categoryLabelSettings = new categoryLabelSettings();
     public dataAxis: DataAxisSettings = new DataAxisSettings();
     public dataAxisLabels: DataAxisLabelsSettings = new DataAxisLabelsSettings();
+    public innerCircle: InnerCircleSettings = new InnerCircleSettings();
 }
 
 /**
@@ -62,7 +63,7 @@ export class dataPointSettings {
 export class categoryAxisSettings {
     public show: boolean = true;
     public angleOffSet: number = -90;
-    public stroke: string = "#E6E6E6";
+    public stroke: string = "#white";
     public strokeWidth: number = 1;
     public cornerRadius: number = 10;
 }
@@ -77,6 +78,8 @@ export class categoryLabelSettings {
     public fontSize: number = dataPointSettings.DefaultFontSize;
     public maxTextSymbol: number = 25;
     public fontFamily: string = "Arial";
+    public orientation: string = "begin";
+    public color: string = dataPointSettings.defaultColor;
 }
 
 /**
@@ -89,18 +92,20 @@ export class DataAxisSettings {
     public steps: number = 4;
     public enableColorbrewer: boolean = true;
     public colorbrewer: string = "Reds";
-    public gradientStart: string = "#FFFFFF";
-    public gradientEnd: string = "#000000";
+    public gradientStart: string = "#d0d0d0";
+    public gradientEnd: string = "#4e4e4e";
     public stepMode: string = "linear";
-    public innerOffset: number = 0;
     public clamp: boolean = true;
     public show: boolean = true;
+    public showFilter: boolean = false;
+}
+
+export class InnerCircleSettings {
+    public show: boolean = true;
+    public innerOffset: number = 0;
     public fill: boolean = false;
     public fillColor: string = "#aaa";
-    public stroke: string = "#E6E6E6";
-    public strokeWidth: string = "1";
-    public showFilter: boolean = false;
-    public AngleOffset: number = -90;
+
 }
 
 export class DataAxisLabelsSettings {
