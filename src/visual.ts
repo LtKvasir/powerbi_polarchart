@@ -66,11 +66,12 @@ type D3Element =
 
 // ------------------------------ SETTINGS AND STUFF ---------------------------------
 import {
-    Settings
+    Settings,
+    colorbrewer
 } from "./settings";
 
 import {
-    IMargin, ChartSizes, ChartData, DataPoint, BgSegment
+    IMargin, ChartSizes, ChartData, DataPoint, BgSegment, IColorArray
 } from "./dataInterfaces";
 
 import {
@@ -107,6 +108,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static animationDuration: number = 1000;
     private static DataStepMaxLimit: number = 10;
     private static DataStepMinLimit: number = 1;
+    private static DefaultColorbrewer: string = "Reds";
     private static innerOffsetLimitFactor: number = 0.5;
 
     private static LabelOffsetDX: number = 2;
@@ -584,6 +586,33 @@ export class ViEvac_PolarChart implements IVisual {
         settings.dataAxis.steps = Math.min(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMaxLimit)
         settings.dataAxis.steps = Math.max(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMinLimit)
         settings.dataAxis.innerOffset = Math.max(settings.dataAxis.innerOffset, 0)
+
+        // we do some stuff to make sure the colorbrewing works for us ...
+        if (!settings.dataAxis.enableColorbrewer) {
+            // no brewer - we just need to check if the min/max is fullfilled
+            settings.dataAxis.steps = Math.min(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMaxLimit)
+            settings.dataAxis.steps = Math.max(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMinLimit)
+        } else {
+            // first see if there is a brewer selected ...
+            if (settings.dataAxis.colorbrewer === "") {
+                settings.dataAxis.colorbrewer = ViEvac_PolarChart.DefaultColorbrewer;
+            }
+
+            // see if the chosen brewer has enough colors. If not - restrict the maxBuckets to the brewers colors ...
+            let colorbrewerArray: IColorArray = colorbrewer[settings.dataAxis.colorbrewer];
+            let minStepNum: number = 0;
+            let maxStepNum: number = 0;
+            for (let stepIndex: number = ViEvac_PolarChart.DataStepMinLimit; stepIndex < ViEvac_PolarChart.DataStepMaxLimit; stepIndex++) {
+                if (minStepNum === 0 && (colorbrewerArray as Object).hasOwnProperty(stepIndex.toString())) {
+                    minStepNum = stepIndex;
+                }
+                if ((colorbrewerArray as Object).hasOwnProperty(stepIndex.toString())) {
+                    maxStepNum = stepIndex;
+                }
+            }
+            settings.dataAxis.steps = Math.min(settings.dataAxis.steps, maxStepNum)
+            settings.dataAxis.steps = Math.max(settings.dataAxis.steps, minStepNum)
+        }
 
         return settings
     }

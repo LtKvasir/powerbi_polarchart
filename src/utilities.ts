@@ -28,21 +28,29 @@ import powerbi from "powerbi-visuals-api";
 import IViewport = powerbi.IViewport;
 
 import * as _ from "lodash-es";
+import * as d3 from "d3";
+
 
 import { pixelConverter as PixelConverter } from "powerbi-visuals-utils-typeutils";
 import { valueFormatter, textMeasurementService } from "powerbi-visuals-utils-formattingutils";
+import { createLinearColorScale, LinearColorScale, ColorHelper } from "powerbi-visuals-utils-colorutils";
+
 import TextMeasurementService = textMeasurementService.textMeasurementService;
 
 import {
     ChartData,
     DataPoint,
-    ChartSizes
+    ChartSizes,
+    IColorBrewerSettings,
+    IColorArray
 } from "./dataInterfaces";
 
 import {
     Settings,
-    DataAxisSettings
+    DataAxisSettings,
+    colorbrewer
 } from "./settings";
+import { color } from "d3";
 
 /**
  * Gets the height of a text field to calculate space needed for axis ...
@@ -100,6 +108,47 @@ export function getTextSize(text: string[], fontsize: number, fontFamily: string
 
     return { width: width, height: height }
 }
+
+/**
+ * Function to calculate a color scale for a brewer ...
+ * @param brewerSettings 
+ */
+export function getColorScale(brewerSettings: IColorBrewerSettings): any {
+    // first set defaults ...
+    let inputMin = (brewerSettings.inputMin == null) ? 0 : brewerSettings.inputMin
+    let inputMax = (brewerSettings.inputMax == null) ? 1 : brewerSettings.inputMax
+    let steps = (brewerSettings.steps == null) ? 4 : brewerSettings.steps
+    let brewer = (brewerSettings.brewer == null) ? "Reds" : brewerSettings.brewer
+    let gradientStart = (brewerSettings.gradientStart == null) ? "black" : brewerSettings.gradientStart
+    let gradientEnd = (brewerSettings.gradientEnd == null) ? "white" : brewerSettings.gradientEnd
+
+    // now care about the scale (brewing or not) ...
+    let colors: Array<string>
+    if (brewerSettings.usebrewer) {
+        // we have a brewer ... use it ...
+        let currentBrewer: IColorArray = colorbrewer[brewer]
+        colors = (currentBrewer) ? currentBrewer[steps] : colorbrewer.Reds[steps]
+    } else {
+        // no brewer ... do the gradients ...
+        let colorScale: LinearColorScale = createLinearColorScale([0, steps], [gradientStart, gradientEnd], true)
+        colors = [];
+        for (let stepIndex: number = 0; stepIndex < steps; stepIndex++) {
+            colors.push(colorScale(stepIndex))
+        }
+    }
+
+    // return the thing ...
+    return {
+        scale: d3.scaleQuantile<string>()
+            .domain([inputMin, inputMax])
+            .range(colors),
+        colors: colors
+    }
+
+}
+
+
+
 
 
 // function computeDimensions(selection) {
