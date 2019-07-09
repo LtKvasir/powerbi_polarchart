@@ -59,10 +59,19 @@
     ],
     "objects": {
         "dataPoint": {
-            "displayName": "Data colors",
+            "displayName": "Data",
             "properties": {
-                "defaultColor": {
-                    "displayName": "Default color",
+                "scaleFactor": {
+                    "displayName": "Data Overlap Factor",
+                    "displayNameKey": "Visual_DataOverlapFactor",
+                    "description": "Overlap of data at half radius (1 = exactly no overlap)",
+                    "descriptionKey": "Visual_DataOverlapFactor",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "group1color": {
+                    "displayName": "Group 1 Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -71,14 +80,8 @@
                         }
                     }
                 },
-                "showAllDataPoints": {
-                    "displayName": "Show all",
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "fill": {
-                    "displayName": "Fill",
+                "group2color": {
+                    "displayName": "Group 2 Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -87,14 +90,20 @@
                         }
                     }
                 },
-                "fillRule": {
-                    "displayName": "Color saturation",
+                "stroke": {
+                    "displayName": "Stroke Color",
+                    "displayNameKey": "Visual_Stroke",
                     "type": {
-                        "fill": {}
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
                     }
                 },
-                "fontSize": {
-                    "displayName": "Text Size",
+                "strokeWidth": {
+                    "displayName": "Stroke Width",
+                    "displayNameKey": "Visual_Stroke_Width",
                     "type": {
                         "formatting": {
                             "fontSize": true

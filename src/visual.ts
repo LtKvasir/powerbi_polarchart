@@ -49,7 +49,6 @@ import {
 } from "powerbi-visuals-utils-tooltiputils";
 import { pixelConverter as PixelConverter } from "powerbi-visuals-utils-typeutils";
 import { valueFormatter, textMeasurementService } from "powerbi-visuals-utils-formattingutils";
-import IValueFormatter = valueFormatter.IValueFormatter;
 // import { createLinearColorScale, LinearColorScale, ColorHelper } from "powerbi-visuals-utils-colorutils";
 // import { axis } from "powerbi-visuals-utils-chartutils";
 
@@ -175,6 +174,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static ClsCategoryAxisLabelTexts: string = "CategoryAxisLabelText"
     private static ClsCategorySegment: string = "CatSegment_"
     private static ClsDataRing: string = "DataRing_"
+    private static ClsDataCircles: string = "DataPoint"
 
     /**
      * Converts the PowerBI input data (from the databinding) to a format that we can work with ...
@@ -200,8 +200,8 @@ export class ViEvac_PolarChart implements IVisual {
         }
 
         // now we need some things be defined correctly ...
-        let categoryValueFormatter: IValueFormatter;
-        let valuesFormatter: IValueFormatter;
+        let categoryValueFormatter: valueFormatter.IValueFormatter;
+        let valuesFormatter: valueFormatter.IValueFormatter;
         let dataPoints: DataPoint[] = [];
 
         // We create the formatter that helps us then to output the correct types and format ...
@@ -376,13 +376,23 @@ export class ViEvac_PolarChart implements IVisual {
             let DataAxisMaxValue = this.settings.dataAxis.maxValue
             let steps = this.settings.dataAxis.steps
 
+            // we need to set min and max values if needed ...
+            if (chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
+                DataAxisMinValue = d3.min(chartData.dataPoints, function (d: DataPoint) {
+                    return d.value as number;
+                });
+                DataAxisMaxValue = d3.max(chartData.dataPoints, function (d: DataPoint) {
+                    return d.value as number;
+                });
+            }
+
             // a few data related variables ...
             let categorySizes = chartData.categories.map(value => {
                 let lastIdx = (chartData.dataPoints.map(v => v.category).lastIndexOf(value))
                 let firstIdx = (chartData.dataPoints.map(v => v.category).indexOf(value))
                 return {
                     category: value,
-                    size: lastIdx - firstIdx + 1,
+                    size: (lastIdx - firstIdx + 1),
                     startIndex: firstIdx,
                     lastIndex: lastIdx
                 }
@@ -401,15 +411,6 @@ export class ViEvac_PolarChart implements IVisual {
             // ---------------------------------------------------------------------------------
             // next we do care about the background, which means circles (update: arcs) ftw ...
             // ---------------------------------------------------------------------------------
-            // we first need to set min and max values for the axis ...
-            if (chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
-                this.settings.dataAxis.minValue = d3.min(chartData.dataPoints, function (d: DataPoint) {
-                    return d.value as number;
-                });
-                this.settings.dataAxis.maxValue = d3.max(chartData.dataPoints, function (d: DataPoint) {
-                    return d.value as number;
-                });
-            }
 
             // let's get to the middle of it, won't we? Start by removing and then drawing the axis wrapper group again ...
             d3.select("." + ViEvac_PolarChart.ClsAxisWrapper).remove()
@@ -523,6 +524,9 @@ export class ViEvac_PolarChart implements IVisual {
                     var bgCircleData = d3.range(0, this.settings.dataAxis.steps)
                 }
 
+                // TODO: Fix this with value formatter
+                let d3Formatter = d3.format(".2f")
+
                 axisWrapper.selectAll(ViEvac_PolarChart.ClsAxisLabels)
                     .data(bgCircleData)
                     .enter()
@@ -547,7 +551,7 @@ export class ViEvac_PolarChart implements IVisual {
                     .style(ViEvac_PolarChart.StFontFamily, fontFamily)
                     .style(ViEvac_PolarChart.StTextAnchor, (Math.cos(angleOffSet * Math.PI / 180) < 0) ? ViEvac_PolarChart.ConstStart : ViEvac_PolarChart.ConstEnd)
                     .text(function (d, i) {
-                        return (DataAxisMaxValue - DataAxisMinValue) / steps * d
+                        return d3Formatter((DataAxisMaxValue - DataAxisMinValue) / steps * d + DataAxisMinValue)
                     })
                     .attr(ViEvac_PolarChart.AttrDY, function (d, i) {
                         // calculate the text size and then (depending on the offset angle position the thing ...)
@@ -655,7 +659,46 @@ export class ViEvac_PolarChart implements IVisual {
                 }
             }
 
-            
+            // ---------------------------------------------------------------------------------
+            // finally we plot the data. This should be easy compared to what we've been through
+            // ---------------------------------------------------------------------------------
+
+            // we do need a scale for the data ... TODO !
+            // we calculate the radius of half the radar and scale it with our overlapping factor to get data size
+            let radarHalfR = dataScale((DataAxisMaxValue - DataAxisMinValue) / 2 + DataAxisMinValue)
+            let dataCircleR = radarHalfR * this.settings.dataPoint.scaleFactor * dataPointAngle * Math.PI / 180
+
+            // create some container and data things and remove DOM (whatever ...)
+            let dataCircles: Selection<DataPoint> = this.mainChart.selectAll("." + ViEvac_PolarChart.ClsDataCircles)
+            let dataCirclesData = dataCircles.data(chartData.dataPoints);
+            let dataCirclesEntered = dataCirclesData
+                .enter()
+                .append(ViEvac_PolarChart.HtmlObjCircle)
+            let dataCirclesMerged = dataCirclesEntered.merge(dataCircles)
+
+
+            // now we simply draw our data points (as easy as that) ...
+            dataCirclesMerged
+                .attr('cx', function (d, i) {
+                    console.log("PARAMETERS", dataScale(Number(d.value)) + " - " + (i + 0.5) * dataPointAngle + " - " + angleOffSet)
+                    console.log("RESULT", getCartFromPolar(dataScale(Number(d.value)), (i + 0.5) * dataPointAngle, angleOffSet).x)
+
+                    return getCartFromPolar(dataScale(Number(d.value)), (i + 0.5) * dataPointAngle, angleOffSet).x
+                })
+                .attr('cy', function (d, i) {
+                    return getCartFromPolar(dataScale(Number(d.value)), (i + 0.5) * dataPointAngle, angleOffSet).y
+                })
+                .attr('r', dataCircleR)
+                .attr('fill', this.settings.dataPoint.group1color)
+                .style('stroke-width', this.settings.dataPoint.strokeWidth)
+                .style('stroke', this.settings.dataPoint.stroke)
+                .classed(ViEvac_PolarChart.ClsDataCircles, true)
+            // .attr("class", function (d) {
+            //     return PB_BubbleMatrix.ClsXId + xScale(d.categoryX.toString()) + " " +
+            //         PB_BubbleMatrix.ClsYId + yScale(d.categoryY.groupedId.toString())
+            // })
+
+
             // remove after finish ...
             console.log("ChartData", chartData)
         } catch (ex) {
@@ -706,7 +749,6 @@ export class ViEvac_PolarChart implements IVisual {
             settings.dataAxis.steps = Math.min(settings.dataAxis.steps, maxStepNum)
             settings.dataAxis.steps = Math.max(settings.dataAxis.steps, minStepNum)
         }
-
         return settings
     }
 
@@ -757,6 +799,16 @@ export class ViEvac_PolarChart implements IVisual {
         let inputMax: number = this.settings.dataAxis.maxValue
         let outputMin: number = this.settings.innerCircle.innerOffset
         let outputMax: number = this.chartSizes.radarR
+
+        // we first need to set min and max values for the axis ...
+        if (chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
+            inputMin = d3.min(chartData.dataPoints, function (d: DataPoint) {
+                return d.value as number;
+            });
+            inputMax = d3.max(chartData.dataPoints, function (d: DataPoint) {
+                return d.value as number;
+            });
+        }
 
         // we also limit the inner offset to a factor set hardcoded by default (half of total size) ...
         outputMin = Math.min(

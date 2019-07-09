@@ -33,6 +33,9 @@ import {
     IColorBrewer
 } from "./dataInterfaces";
 
+var DefaultFontSize: number = 12
+var defaultColor: string = "white"
+
 /**
  * Main settings class. All more granular settings go here ...
  */
@@ -49,13 +52,12 @@ export class Settings extends DataViewObjectsParser {
  * Settings for the dataPoints
  */
 export class dataPointSettings {
-    public static defaultColor: string = "";
-    public static showAllDataPoints: boolean = true;
-    public static fill: string = "";
-    public static fillRule: string = "";
-    public static DefaultFontSize: number = 12;
-
-}
+    public group1color: string = "white";
+    public group2color: string = "grey";
+    public scaleFactor: number = 1;
+    public stroke: string = "#white";
+    public strokeWidth: number = 1;
+ }
 
 /**
  * Settings for the category axis
@@ -63,7 +65,7 @@ export class dataPointSettings {
 export class categoryAxisSettings {
     public show: boolean = true;
     public angleOffSet: number = -90;
-    public stroke: string = "#white";
+    public stroke: string = defaultColor;
     public strokeWidth: number = 1;
     public cornerRadius: number = 10;
 }
@@ -75,11 +77,11 @@ export class categoryLabelSettings {
     public show: boolean = true;
     public fill: boolean = false;
     public fillColor: string = "#aaa";
-    public fontSize: number = dataPointSettings.DefaultFontSize;
     public maxTextSymbol: number = 25;
     public fontFamily: string = "Arial";
     public orientation: string = "begin";
-    public color: string = dataPointSettings.defaultColor;
+    public color: string = defaultColor;
+    public fontSize: number = DefaultFontSize;
 }
 
 /**
@@ -87,8 +89,8 @@ export class categoryLabelSettings {
  */
 export class DataAxisSettings {
     public invert: boolean = true;
-    public minValue: number = 0;
-    public maxValue: number = 100;
+    public minValue: number = null;
+    public maxValue: number = null;
     public steps: number = 4;
     public enableColorbrewer: boolean = true;
     public colorbrewer: string = "Reds";
@@ -110,20 +112,20 @@ export class InnerCircleSettings {
 
 export class DataAxisLabelsSettings {
     public show: boolean = true;
-    public fontSize: number = dataPointSettings.DefaultFontSize;
+    public fontSize: number = DefaultFontSize;
     public maxTextSymbol: number = 25;
     public fontFamily: string = "Arial";
-    public color: string = dataPointSettings.defaultColor;
+    public color: string = "white";
 }
 
 /**
  * Type for font settings (mainly for labels) ...
  */
 export class TextSettings {
-    public fontSize: number = dataPointSettings.DefaultFontSize;
+    public fontSize: number = DefaultFontSize;
     public maxTextSymbol: number = 25;
     public fontFamily: string = "Arial";
-    public color: string = dataPointSettings.defaultColor;
+    public color: string = "white";
 }
 
 /**
