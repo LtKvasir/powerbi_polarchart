@@ -57,6 +57,7 @@ export class dataPointSettings {
     public scaleFactor: number = 1;
     public stroke: string = "#white";
     public strokeWidth: number = 1;
+    public fillArea: boolean = true;
  }
 
 /**

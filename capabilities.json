@@ -109,6 +109,13 @@
                             "fontSize": true
                         }
                     }
+                },
+                "fillArea": {
+                    "displayName": "Fill Area",
+                    "displayNameKey": "Visual_FillArea",
+                    "type": {
+                        "bool": true
+                    }
                 }
             }
         },

@@ -34,6 +34,7 @@ import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructor
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import IColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette
 import IViewport = powerbi.IViewport;
 
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
@@ -98,6 +99,7 @@ export class ViEvac_PolarChart implements IVisual {
     private settings: Settings;
     private textNode: Text;
     private element: HTMLElement;
+    private colorPalette: IColorPalette;
 
     private tooltipServiceWrapper: ITooltipServiceWrapper;
 
@@ -271,10 +273,12 @@ export class ViEvac_PolarChart implements IVisual {
                     group: {
                         group: groupArray.source.groupName,
                         category: category,
-                        groupId: groupArray.source.groupName + "-" + category
+                        groupId: groupArray.source.groupName + "-" + category,
+                        color: this.colorPalette.getColor(groupArray.source.groupName.toString()).value
                     },
                     category: category,
                     categorySecondField: categorySecondField,
+                    uniqueFieldID: category + "-" + categorySecondField,
                     value: value,
                     valueStr: groupFormatter.format(value),
                     tooltipInfo: tooltipArray
@@ -285,8 +289,8 @@ export class ViEvac_PolarChart implements IVisual {
         // create the data and return it ...
         dataPoints = dataPoints.sort(function (a, b) {
             // we sort the dataPoints by the Y group values
-            var CatA = a.category.toString().toUpperCase();
-            var CatB = b.category.toString().toUpperCase();
+            var CatA = a.uniqueFieldID.toString().toUpperCase();
+            var CatB = b.uniqueFieldID.toString().toUpperCase();
             return CatA < CatB ? -1 : CatA > CatB ? 1 : 0;
         })
 
@@ -302,11 +306,16 @@ export class ViEvac_PolarChart implements IVisual {
             return self.indexOf(value) === index;
         })
 
+        var uniqueFields = dataPoints.map(v => v.uniqueFieldID).filter((value, index, self) => {
+            return self.indexOf(value) === index;
+        })
+
         // and return it we do ...
         return <ChartData>{
             dataPoints: dataPoints,
             categories: categories,
             categoryFields: categoryFields,
+            uniqueFields: uniqueFields,
             groups: groups,
             valueFormatter: valueFormatter,
             categoryValueFormatter: categoryValueFormatter
@@ -321,6 +330,7 @@ export class ViEvac_PolarChart implements IVisual {
     constructor({ host, element }: VisualConstructorOptions) {
         this.host = host;
         this.element = element;
+        this.colorPalette = host.colorPalette
 
         // add the div and svg element to the Browser/PowerBI ...
         this.div = d3.select(element)
@@ -372,6 +382,7 @@ export class ViEvac_PolarChart implements IVisual {
             // also prepare some necessary variables for further use ...
             let angleOffSet = this.settings.categoryAxis.angleOffSet
             let dataPointAngle = 360 / chartData.dataPoints.length
+            let datafieldAngle = 360 / chartData.uniqueFields.length
             let DataAxisMinValue = this.settings.dataAxis.minValue
             let DataAxisMaxValue = this.settings.dataAxis.maxValue
             let steps = this.settings.dataAxis.steps
@@ -386,7 +397,13 @@ export class ViEvac_PolarChart implements IVisual {
                 });
             }
 
-            // a few data related variables ...
+            // scales ...
+            var dataScale = this.getDataScale(chartData)
+            var fieldScale = d3.scaleBand()
+                    .domain(chartData.uniqueFields)
+                    .range([angleOffSet, angleOffSet + 360]);
+
+            // and a few data related variables ...
             let categorySizes = chartData.categories.map(value => {
                 let lastIdx = (chartData.dataPoints.map(v => v.category).lastIndexOf(value))
                 let firstIdx = (chartData.dataPoints.map(v => v.category).indexOf(value))
@@ -394,13 +411,11 @@ export class ViEvac_PolarChart implements IVisual {
                     category: value,
                     size: (lastIdx - firstIdx + 1),
                     startIndex: firstIdx,
-                    lastIndex: lastIdx
+                    lastIndex: lastIdx,
+                    startAngle: (fieldScale(chartData.dataPoints[firstIdx].uniqueFieldID) + 90 ) * Math.PI / 180,
+                    endAngle: (fieldScale(chartData.dataPoints[lastIdx].uniqueFieldID) + 90 ) * Math.PI / 180
                 }
             })
-
-
-            // and also a scale ...
-            var dataScale = this.getDataScale(chartData)
 
             // and append the main chart as group ...
             this.mainChart = this.svg.append(ViEvac_PolarChart.HtmlObjG)
@@ -454,8 +469,8 @@ export class ViEvac_PolarChart implements IVisual {
                             {
                                 innerRadius: ((this.settings.dataAxis.invert) ? outerRadius : innerRadius) + Math.ceil(Number(this.settings.categoryAxis.strokeWidth) / 2),
                                 outerRadius: ((this.settings.dataAxis.invert) ? innerRadius : outerRadius) - Math.floor(Number(this.settings.categoryAxis.strokeWidth) / 2),
-                                startAngle: (category.startIndex * dataPointAngle + angleOffSet + 90) * Math.PI / 180,
-                                endAngle: ((category.lastIndex + 1) * dataPointAngle + angleOffSet + 90) * Math.PI / 180,
+                                startAngle: category.startAngle,
+                                endAngle: category.endAngle + datafieldAngle * Math.PI / 180,
                                 category: category.category,
                                 ring: ring
                             }
@@ -666,7 +681,7 @@ export class ViEvac_PolarChart implements IVisual {
             // we do need a scale for the data ... TODO !
             // we calculate the radius of half the radar and scale it with our overlapping factor to get data size
             let radarHalfR = dataScale((DataAxisMaxValue - DataAxisMinValue) / 2 + DataAxisMinValue)
-            let dataCircleR = radarHalfR * this.settings.dataPoint.scaleFactor * dataPointAngle * Math.PI / 180
+            let dataCircleR = radarHalfR * this.settings.dataPoint.scaleFactor * datafieldAngle * Math.PI / 180
 
             // create some container and data things and remove DOM (whatever ...)
             let dataCircles: Selection<DataPoint> = this.mainChart.selectAll("." + ViEvac_PolarChart.ClsDataCircles)
@@ -676,27 +691,35 @@ export class ViEvac_PolarChart implements IVisual {
                 .append(ViEvac_PolarChart.HtmlObjCircle)
             let dataCirclesMerged = dataCirclesEntered.merge(dataCircles)
 
+            // color things we need ...
+            let dataPointSettings = this.settings.dataPoint
 
             // now we simply draw our data points (as easy as that) ...
             dataCirclesMerged
                 .attr('cx', function (d, i) {
-                    console.log("PARAMETERS", dataScale(Number(d.value)) + " - " + (i + 0.5) * dataPointAngle + " - " + angleOffSet)
-                    console.log("RESULT", getCartFromPolar(dataScale(Number(d.value)), (i + 0.5) * dataPointAngle, angleOffSet).x)
-
-                    return getCartFromPolar(dataScale(Number(d.value)), (i + 0.5) * dataPointAngle, angleOffSet).x
+                    return getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle/2).x
                 })
                 .attr('cy', function (d, i) {
-                    return getCartFromPolar(dataScale(Number(d.value)), (i + 0.5) * dataPointAngle, angleOffSet).y
+                    return getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle/2).y
                 })
                 .attr('r', dataCircleR)
-                .attr('fill', this.settings.dataPoint.group1color)
+                .attr('fill', function (d, i) {
+                    return (dataPointSettings.fillArea) ? d.group.color.toString() : "None"
+                })
                 .style('stroke-width', this.settings.dataPoint.strokeWidth)
-                .style('stroke', this.settings.dataPoint.stroke)
+                .style('stroke', function (d, i) {
+                    return (dataPointSettings.fillArea) ? dataPointSettings.stroke : d.group.color.toString()
+                })
                 .classed(ViEvac_PolarChart.ClsDataCircles, true)
             // .attr("class", function (d) {
             //     return PB_BubbleMatrix.ClsXId + xScale(d.categoryX.toString()) + " " +
             //         PB_BubbleMatrix.ClsYId + yScale(d.categoryY.groupedId.toString())
             // })
+
+            // we want tooltips ...
+            this.tooltipServiceWrapper.addTooltip(dataCirclesMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
+                return tooltipEvent.data.tooltipInfo;
+            });
 
 
             // remove after finish ...
