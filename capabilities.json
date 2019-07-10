@@ -61,6 +61,22 @@
         "dataPoint": {
             "displayName": "Data",
             "properties": {
+                "useImpact": {
+                    "displayName": "Use Impact",
+                    "displayNameKey": "Visual_UseImpact",
+                    "description": "Use the second measure to size data Points?",
+                    "descriptionKey": "Visual_UseImpact",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "buckets": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "displayName": "Buckets",
+                    "displayNameKey": "Visual_General_Buckets"
+                },
                 "scaleFactor": {
                     "displayName": "Data Overlap Factor",
                     "displayNameKey": "Visual_DataOverlapFactor",
@@ -115,6 +131,58 @@
                     "displayNameKey": "Visual_FillArea",
                     "type": {
                         "bool": true
+                    }
+                }
+            }
+        },
+        "impact": {
+            "displayName": "Impact Settings",
+            "properties": {
+                "show": {
+                    "displayName": "Show",
+                    "displayNameKey": "Visual_Show",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "buckets": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "displayName": "Buckets",
+                    "displayNameKey": "Visual_General_Buckets"
+                },
+                "bucketScale": {
+                    "displayName": "Scale to buckets",
+                    "displayNameKey": "Visual_BucketScale",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "clamp": {
+                    "displayName": "Clamp",
+                    "displayNameKey": "Visual_Clamp",
+                    "description": "Limit data points out of range to range limits",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "minValue": {
+                    "displayName": "Min Value",
+                    "displayNameKey": "Visual_MinValue",
+                    "description": "Minimal Value of data axis",
+                    "descriptionKey": "Visual_MinValue",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "maxValue": {
+                    "displayName": "Max Value",
+                    "displayNameKey": "Visual_MaxValue",
+                    "description": "Maximal Value of data axis",
+                    "descriptionKey": "Visual_MaxValue",
+                    "type": {
+                        "numeric": true
                     }
                 }
             }

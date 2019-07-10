@@ -41,6 +41,7 @@ var defaultColor: string = "white"
  */
 export class Settings extends DataViewObjectsParser {
     public dataPoint: dataPointSettings = new dataPointSettings();
+    public impact: impactSettings = new impactSettings();
     public categoryAxis: categoryAxisSettings = new categoryAxisSettings();
     public categoryAxisLabels: categoryLabelSettings = new categoryLabelSettings();
     public dataAxis: DataAxisSettings = new DataAxisSettings();
@@ -59,6 +60,18 @@ export class dataPointSettings {
     public strokeWidth: number = 1;
     public fillArea: boolean = true;
  }
+
+ /**
+  * Settings for the impact
+  */
+ export class impactSettings {
+    public show: boolean = true;
+    public buckets: number = 3;
+    public bucketScale: boolean = true;
+    public clamp: boolean = true;
+    public minValue: number = null;
+    public maxValue: number = null;
+}
 
 /**
  * Settings for the category axis

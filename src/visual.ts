@@ -78,7 +78,8 @@ import {
     getCategoryAxisHeight,
     getCartFromPolar,
     getTextSize,
-    getColorScale
+    getColorScale,
+    getRangePoints
 } from "./utilities";
 import { text } from "d3";
 import { numberFormat } from "powerbi-visuals-utils-formattingutils/lib/src/formattingService/formattingService";
@@ -112,6 +113,10 @@ export class ViEvac_PolarChart implements IVisual {
     private static DataStepMinLimit: number = 1;
     private static DefaultColorbrewer: string = "Reds";
     private static innerOffsetLimitFactor: number = 0.5;
+    private static minPointRadius: number = 2;
+
+    private static BucketCountMaxLimit: number = 18;
+    private static BucketCountMinLimit: number = 2;
 
     private static LabelOffsetDX: number = 2;
     private static LabelOffsetDY: number = 2;
@@ -205,6 +210,8 @@ export class ViEvac_PolarChart implements IVisual {
         let categoryValueFormatter: valueFormatter.IValueFormatter;
         let valuesFormatter: valueFormatter.IValueFormatter;
         let dataPoints: DataPoint[] = [];
+        let tempDataPoints: DataPoint[] = [];
+
 
         // We create the formatter that helps us then to output the correct types and format ...
         categoryValueFormatter = valueFormatter.create({
@@ -218,7 +225,8 @@ export class ViEvac_PolarChart implements IVisual {
 
         });
 
-        // and now we get the stuff done ... 
+        // and now we get the stuff done. So I'll explain: We first do a temporary array, where we 
+        // will get all datapoints there are ... 
         dataView.categorical.categories[0].values.forEach((category, index) => {
             // now cycle through every group (group) within the category
             dataView.categorical.values.forEach((groupArray) => {
@@ -231,45 +239,11 @@ export class ViEvac_PolarChart implements IVisual {
                 // now - more interesting - get the group and values. Let's push 'em to data points ...
                 // we also need to check for a second category value and add it if it is given ...
                 let value = groupArray.values[index];
-                let categorySecondField = ""
+                let subCategory = (dataView.categorical.categories.length == 2) ? dataView.categorical.categories[1].values[index].toString() : ""
                 let tooltipArray = []
+                let valueName = groupArray.source.displayName
 
-                if (dataView.categorical.categories.length == 2) {
-                    categorySecondField = dataView.categorical.categories[1].values[index].toString()
-                    tooltipArray = [{
-                        displayName: `Category`,
-                        value: (category || "").toString()
-                    },
-                    {
-                        displayName: "Field",
-                        value: (categorySecondField || "").toString()
-                    },
-                    {
-                        displayName: `Group`,
-                        value: (groupArray.source.groupName || "").toString()
-                    },
-                    {
-                        displayName: `Value`,
-                        value: valuesFormatter.format(value)
-                    }]
-                } else {
-                    // only one category field ...
-                    categorySecondField = ""
-                    tooltipArray = [{
-                        displayName: `Category`,
-                        value: (category || "").toString()
-                    },
-                    {
-                        displayName: `Group`,
-                        value: (groupArray.source.groupName || "").toString()
-                    },
-                    {
-                        displayName: `Value`,
-                        value: valuesFormatter.format(value)
-                    }]
-                }
-
-                dataPoints.push({
+                tempDataPoints.push({
                     group: {
                         group: groupArray.source.groupName,
                         category: category,
@@ -277,37 +251,110 @@ export class ViEvac_PolarChart implements IVisual {
                         color: this.colorPalette.getColor(groupArray.source.groupName.toString()).value
                     },
                     category: category,
-                    categorySecondField: categorySecondField,
-                    uniqueFieldID: category + "-" + categorySecondField,
+                    subCategory: subCategory,
+                    uniqueFieldID: category + "-" + subCategory,
+                    uniqueGroupFieldID: category + "-" + subCategory + "-" + groupArray.source.groupName,
+                    valueName: valueName,
                     value: value,
+                    impactName: "",
+                    impactValue: "",
+                    description: "",
                     valueStr: groupFormatter.format(value),
-                    tooltipInfo: tooltipArray
+                    tooltipInfo: []
                 });
             });
         });
 
+        // ok. now we do have separate datapoints for things that do belong together. 
+        // we first create the unique arrays (which are ok already) then we'll loop and merge 'em
         // create the data and return it ...
-        dataPoints = dataPoints.sort(function (a, b) {
+        tempDataPoints = tempDataPoints.sort(function (a, b) {
             // we sort the dataPoints by the Y group values
             var CatA = a.uniqueFieldID.toString().toUpperCase();
             var CatB = b.uniqueFieldID.toString().toUpperCase();
             return CatA < CatB ? -1 : CatA > CatB ? 1 : 0;
         })
 
-        var groups = dataPoints.map(v => v.group.group).filter((value, index, self) => {
+        var groups = tempDataPoints.map(v => v.group.group).filter((value, index, self) => {
             return self.indexOf(value) === index;
         })
 
-        var categories = dataPoints.map(v => v.category).filter((value, index, self) => {
+        var categories = tempDataPoints.map(v => v.category).filter((value, index, self) => {
             return self.indexOf(value) === index;
         })
 
-        var categoryFields = dataPoints.map(v => v.categorySecondField).filter((value, index, self) => {
+        var categoryFields = tempDataPoints.map(v => v.subCategory).filter((value, index, self) => {
             return self.indexOf(value) === index;
         })
 
-        var uniqueFields = dataPoints.map(v => v.uniqueFieldID).filter((value, index, self) => {
+        var uniqueFields = tempDataPoints.map(v => v.uniqueFieldID).filter((value, index, self) => {
             return self.indexOf(value) === index;
+        })
+
+        var uniqueGroupFields = tempDataPoints.map(v => v.uniqueGroupFieldID).filter((value, index, self) => {
+            return self.indexOf(value) === index;
+        })
+
+        // loop 'em ... do it ... do it ... do it ...
+        uniqueGroupFields.forEach((uniqueField) => {
+            // so these are the unique Fields ...
+            let measureNames: powerbi.PrimitiveValue[] = [];
+            let measureValues: powerbi.PrimitiveValue[] = [];
+
+            tempDataPoints.filter(function (dPoint) {
+                // this filters all datapoints for the unique field ...
+                return dPoint.uniqueGroupFieldID == uniqueField
+            }).forEach((field, i) => {
+                // and this now gives us each datapoint for the uField. We extract their data we do ...
+                measureNames.push(field.valueName)
+
+                measureValues.push(field.value)
+            })
+
+            // so we are still at the fields and now can push dataPoints. First to measures go to value and
+            // impact. Third is description. All others are just for tooltips (this is just how our Visual works)
+            let thePoint = tempDataPoints.find((thePoint) => { return thePoint.uniqueGroupFieldID == uniqueField })
+
+            // doing tooltips first (hard work again - why do we do it in this veeery general way?) ...
+            let tooltipArray = [{
+                displayName: "Category",
+                value: (thePoint.category || "").toString(),
+                color: "blue"
+            },
+            {
+                displayName: "Group",
+                value: (thePoint.group.group || "").toString()
+            }]
+
+            if (dataView.categorical.categories.length == 2) {
+                tooltipArray.push({
+                    displayName: "Field",
+                    value: (thePoint.subCategory || "").toString()
+                })
+            }
+
+            measureNames.forEach((measure, idx) => {
+                tooltipArray.push({
+                    displayName: measure.toString(),
+                    value: (measureValues[idx] || "").toString()
+                })
+            })
+
+            // and the data - here it goes ... (what hard work that was - 2 hours of my life ...)
+            dataPoints.push({
+                group: thePoint.group,
+                category: thePoint.category,
+                subCategory: thePoint.subCategory,
+                uniqueFieldID: thePoint.uniqueFieldID,
+                uniqueGroupFieldID: thePoint.uniqueGroupFieldID,
+                valueName: measureNames[0],
+                value: measureValues[0],
+                impactName: (measureNames.length > 1) ? measureNames[1] : "",
+                impactValue: (measureNames.length > 1) ? measureValues[1] : "",
+                description: (measureNames.length > 2) ? measureValues[2] : "",
+                valueStr: thePoint.valueStr,
+                tooltipInfo: tooltipArray
+            });
         })
 
         // and return it we do ...
@@ -400,8 +447,8 @@ export class ViEvac_PolarChart implements IVisual {
             // scales ...
             var dataScale = this.getDataScale(chartData)
             var fieldScale = d3.scaleBand()
-                    .domain(chartData.uniqueFields)
-                    .range([angleOffSet, angleOffSet + 360]);
+                .domain(chartData.uniqueFields)
+                .range([angleOffSet, angleOffSet + 360]);
 
             // and a few data related variables ...
             let categorySizes = chartData.categories.map(value => {
@@ -412,8 +459,8 @@ export class ViEvac_PolarChart implements IVisual {
                     size: (lastIdx - firstIdx + 1),
                     startIndex: firstIdx,
                     lastIndex: lastIdx,
-                    startAngle: (fieldScale(chartData.dataPoints[firstIdx].uniqueFieldID) + 90 ) * Math.PI / 180,
-                    endAngle: (fieldScale(chartData.dataPoints[lastIdx].uniqueFieldID) + 90 ) * Math.PI / 180
+                    startAngle: (fieldScale(chartData.dataPoints[firstIdx].uniqueFieldID) + 90) * Math.PI / 180,
+                    endAngle: (fieldScale(chartData.dataPoints[lastIdx].uniqueFieldID) + 90) * Math.PI / 180
                 }
             })
 
@@ -691,7 +738,11 @@ export class ViEvac_PolarChart implements IVisual {
             // finally we plot the data. This should be easy compared to what we've been through
             // ---------------------------------------------------------------------------------
 
-            // we do need a scale for the data ... TODO !
+            // we do need a scale for size ...
+            let impactScale = this.getImpactScale(chartData, this.settings, options)
+
+            // TODO FROM HERE
+
             // we calculate the radius of half the radar and scale it with our overlapping factor to get data size
             let radarHalfR = dataScale((DataAxisMaxValue - DataAxisMinValue) / 2 + DataAxisMinValue)
             let dataCircleR = radarHalfR * this.settings.dataPoint.scaleFactor * datafieldAngle * Math.PI / 180
@@ -710,12 +761,14 @@ export class ViEvac_PolarChart implements IVisual {
             // now we simply draw our data points (as easy as that) ...
             dataCirclesMerged
                 .attr('cx', function (d, i) {
-                    return getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle/2).x
+                    return getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle / 2).x
                 })
                 .attr('cy', function (d, i) {
-                    return getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle/2).y
+                    return getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle / 2).y
                 })
-                .attr('r', dataCircleR)
+                .attr('r', function (d) {
+                    return dataCircleR * impactScale(d.impactValue) + ViEvac_PolarChart.minPointRadius
+                })
                 .attr('fill', function (d, i) {
                     return (dataPointSettings.fillArea) ? d.group.color.toString() : "None"
                 })
@@ -740,9 +793,6 @@ export class ViEvac_PolarChart implements IVisual {
         } catch (ex) {
 
         }
-
-
-
     }
 
     /**
@@ -785,6 +835,13 @@ export class ViEvac_PolarChart implements IVisual {
             settings.dataAxis.steps = Math.min(settings.dataAxis.steps, maxStepNum)
             settings.dataAxis.steps = Math.max(settings.dataAxis.steps, minStepNum)
         }
+
+        // care for the buckets (size of points) ...
+        if (settings.impact.show) {
+            settings.impact.buckets = Math.max(settings.impact.buckets, ViEvac_PolarChart.BucketCountMinLimit)
+            settings.impact.buckets = Math.min(settings.impact.buckets, ViEvac_PolarChart.BucketCountMaxLimit)
+        }
+
         return settings
     }
 
@@ -861,6 +918,46 @@ export class ViEvac_PolarChart implements IVisual {
                 .domain([inputMin, inputMax])
                 .range((this.settings.dataAxis.invert) ? [outputMax, outputMin] : [outputMin, outputMax])
                 .clamp(this.settings.dataAxis.clamp);
+        }
+    }
+
+    /**
+     * Function to calculate the scale for the point radius
+     * @param chartData All data - used to look for max and min values
+     * @param settings The settings used to see if custom scales are set
+     */
+    private getImpactScale(chartData: ChartData, settings: Settings, options: VisualUpdateOptions): any {
+        let inputMin: number = null
+        let inputMax: number = null
+
+        // we first set the input to the data intervall ..
+        if (chartData.dataPoints) {
+            inputMin = d3.min(chartData.dataPoints, function (d: DataPoint) {
+                return d.value as number;
+            });
+            inputMax = d3.max(chartData.dataPoints, function (d: DataPoint) {
+                return d.value as number;
+            });
+        }
+
+        // now we override it, but only if valid settings are given ...
+        if (settings.impact.maxValue > 0 && settings.impact.maxValue > settings.impact.minValue) {
+            inputMin = !(this.settings.impact.minValue == null) ? settings.impact.minValue : inputMin
+            inputMax = settings.impact.maxValue
+        }
+
+        if (settings.impact.bucketScale) {
+            // now let's output the scale; we calculate quantiles and do a quantile scale, matching the number of color buckets ...
+            let intervals = getRangePoints(0, 1, settings.impact.buckets)
+            return d3.scaleQuantile()
+                .domain([inputMin, inputMax])
+                .range(intervals)
+        } else {
+            // in this case we want a linear scale ...
+            return d3.scaleLinear()
+                .domain([inputMin, inputMax])
+                .range([0, 1])
+                .clamp(settings.impact.clamp);
         }
     }
 

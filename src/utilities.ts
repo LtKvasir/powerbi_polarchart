@@ -147,6 +147,27 @@ export function getColorScale(brewerSettings: IColorBrewerSettings): any {
 
 }
 
+/**
+     * Calculates an array of numbers that divide the range between the input values in uniform intervalls 
+     * @param outputMin lower end of input range
+     * @param outputMax upper end of input range 
+     * @param buckets 
+     */
+export function getRangePoints(minValue: number, maxValue: number, numSteps: number): number[] {
+    if (minValue > maxValue) {
+        let tmp = maxValue
+        maxValue = minValue
+        minValue = tmp
+    }
+
+    let delta = (maxValue - minValue) / (numSteps - 1)
+    let result = []
+    for (let i = 0; i < numSteps; i++) {
+        result.push(minValue + i * delta)
+    }
+    return result
+}
+
 
 
 

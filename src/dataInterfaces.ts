@@ -33,10 +33,15 @@ import { numericSequence } from "powerbi-visuals-utils-typeutils";
 
 export interface DataPoint {
     category: powerbi.PrimitiveValue;
-    categorySecondField: powerbi.PrimitiveValue;
+    subCategory: powerbi.PrimitiveValue;
+    valueName: powerbi.PrimitiveValue;
     uniqueFieldID: string;
+    uniqueGroupFieldID: string;
     group: Group;
     value: powerbi.PrimitiveValue;
+    impactValue: powerbi.PrimitiveValue;
+    impactName: powerbi.PrimitiveValue;
+    description: powerbi.PrimitiveValue;
     valueStr: string;
     tooltipInfo?: VisualTooltipDataItem[];
 }
