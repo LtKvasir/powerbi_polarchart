@@ -641,11 +641,15 @@ export class ViEvac_PolarChart implements IVisual {
                         })
 
                     // now append the category names to the arcs ...
-                    let textOrientation = "2%"
+                    let textOrientation = ["2%", "98%"]
+                    let textAnchor = [ViEvac_PolarChart.ConstBegin, ViEvac_PolarChart.ConstEnd]
                     if (this.settings.categoryAxisLabels.orientation == "middle") {
-                        textOrientation = "50%"
+                        textOrientation = ["50%", "50%"]
+                        textAnchor = [ViEvac_PolarChart.ConstMiddle, ViEvac_PolarChart.ConstMiddle]
                     } else if (this.settings.categoryAxisLabels.orientation == "end") {
-                        textOrientation = "98%"
+                        textOrientation = ["98%", "2%"]
+                        textAnchor = [ViEvac_PolarChart.ConstEnd, ViEvac_PolarChart.ConstBegin]
+
                     }
 
                     // we create the arcs for the labels. As we want to be able to center the text this is going to be tricky
@@ -657,18 +661,27 @@ export class ViEvac_PolarChart implements IVisual {
                         .enter().append(ViEvac_PolarChart.HtmlObjText)
                         .classed(ViEvac_PolarChart.ClsCategoryAxisLabelTexts, true)
                         .attr(ViEvac_PolarChart.AttrDY, function (d) {
+                            // do a different DY if text is turned ...
                             let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
                             return (Math.sin(lastAngle) > 0) ? -chartDY / 2 : chartDY
                         })
                         .append(ViEvac_PolarChart.HtmlTextPath)
-                        .attr("startOffset", textOrientation)
+                        .attr("startOffset", function (d) {
+                            // if we turn the text we need to turn orientation too ...
+                            let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
+                            return (Math.sin(lastAngle) > 0) ? textOrientation[1] : textOrientation[0]
+                        })
                         .attr(ViEvac_PolarChart.HtmlPathLink, function (d, i) {
                             // link to the ID of the path ...
                             return "#" + ViEvac_PolarChart.ClsCategoryAxisLabels + i
                         })
                         .text(function (d) { return d.category.toString() })
                         .attr(ViEvac_PolarChart.StFill, this.settings.categoryAxisLabels.color)
-                        .style(ViEvac_PolarChart.StTextAnchor, this.settings.categoryAxisLabels.orientation)
+                        .style(ViEvac_PolarChart.StTextAnchor, function (d) {
+                            // if we turn the text we need to turn orientation too ...
+                            let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
+                            return (Math.sin(lastAngle) > 0) ? textAnchor[1] : textAnchor[0]
+                        })
                         .style(ViEvac_PolarChart.StFontSize, this.settings.categoryAxisLabels.fontSize)
                         .style(ViEvac_PolarChart.StFontFamily, this.settings.categoryAxisLabels.fontFamily)
                 }
