@@ -40,42 +40,66 @@ var defaultColor: string = "white"
  * Main settings class. All more granular settings go here ...
  */
 export class Settings extends DataViewObjectsParser {
-    public dataPoint: dataPointSettings = new dataPointSettings();
+    public dataBasics: dataSettings = new dataSettings();
+    public innerCircle: InnerCircleSettings = new InnerCircleSettings();
+    public groups: GroupSettings = new GroupSettings();
     public impact: impactSettings = new impactSettings();
+    public preparedness: preparednessSettings = new preparednessSettings();
+
+
     public categoryAxis: categoryAxisSettings = new categoryAxisSettings();
     public categoryAxisLabels: categoryLabelSettings = new categoryLabelSettings();
     public dataAxis: DataAxisSettings = new DataAxisSettings();
     public dataAxisLabels: DataAxisLabelsSettings = new DataAxisLabelsSettings();
-    public innerCircle: InnerCircleSettings = new InnerCircleSettings();
 }
 
 /**
  * Settings for the dataPoints
  */
-export class dataPointSettings {
-    public group1color: string = "white";
-    public group2color: string = "grey";
+export class dataSettings {
     public scaleFactor: number = 1;
     public stroke: string = "#white";
     public strokeWidth: number = 1;
     public fillArea: boolean = true;
- }
+}
 
- /**
-  * Settings for the impact
-  */
+ export class InnerCircleSettings {
+    public show: boolean = true;
+    public innerOffset: number = 0;
+    public fillColor: string = "#aaa";
+}
+
+export class GroupSettings {
+    public colors: boolean = false;
+    public group1color: string = "white";
+    public group2color: string = "grey";
+    public showLines: boolean = true;
+    public strokeWidth: number = 1;
+    public useSymbols: boolean = false;
+
+}
+
  export class impactSettings {
     public show: boolean = true;
-    public buckets: number = 3;
     public bucketScale: boolean = true;
+    public buckets: number = 3;
+    public minPointRadius: number = 5;
     public clamp: boolean = true;
     public minValue: number = null;
     public maxValue: number = null;
 }
 
-/**
- * Settings for the category axis
- */
+export class preparednessSettings {
+    public show: boolean = true;
+    public buckets: number = 3;
+    public minValue: number = null;
+    public maxValue: number = null;
+    public enableColorbrewer: boolean = true;
+    public colorbrewer: string = "Reds";
+    public gradientStart: string = "#d0d0d0";
+    public gradientEnd: string = "#4e4e4e";
+}
+
 export class categoryAxisSettings {
     public show: boolean = true;
     public angleOffSet: number = -90;
@@ -84,62 +108,37 @@ export class categoryAxisSettings {
     public cornerRadius: number = 10;
 }
 
-/**
- * Settings for labeling the categories
- */
 export class categoryLabelSettings {
     public show: boolean = true;
     public fill: boolean = false;
     public fillColor: string = "#aaa";
-    public maxTextSymbol: number = 25;
+    public fontSize: number = DefaultFontSize;
     public fontFamily: string = "Arial";
     public orientation: string = "begin";
     public color: string = defaultColor;
-    public fontSize: number = DefaultFontSize;
 }
 
-/**
- * Settings for labeling (and drawing) the data axis
- */
 export class DataAxisSettings {
+    public show: boolean = true;
     public invert: boolean = true;
     public minValue: number = null;
     public maxValue: number = null;
     public steps: number = 4;
+    public stepMode: string = "linear";
+    public clamp: boolean = true;
+    public showFilter: boolean = false;
     public enableColorbrewer: boolean = true;
     public colorbrewer: string = "Reds";
     public gradientStart: string = "#d0d0d0";
     public gradientEnd: string = "#4e4e4e";
-    public stepMode: string = "linear";
-    public clamp: boolean = true;
-    public show: boolean = true;
-    public showFilter: boolean = false;
-}
-
-export class InnerCircleSettings {
-    public show: boolean = true;
-    public innerOffset: number = 0;
-    public fill: boolean = false;
-    public fillColor: string = "#aaa";
-
 }
 
 export class DataAxisLabelsSettings {
     public show: boolean = true;
     public fontSize: number = DefaultFontSize;
-    public maxTextSymbol: number = 25;
     public fontFamily: string = "Arial";
     public color: string = "white";
-}
-
-/**
- * Type for font settings (mainly for labels) ...
- */
-export class TextSettings {
-    public fontSize: number = DefaultFontSize;
     public maxTextSymbol: number = 25;
-    public fontFamily: string = "Arial";
-    public color: string = "white";
 }
 
 /**

@@ -62,7 +62,7 @@ export function getCategoryAxisHeight(chartData: ChartData, settings: Settings):
     if (!settings.categoryAxisLabels.show) { return 0 }
 
     // first we see what the longest text value is (in characters)... 
-    let maxLengthText: powerbi.PrimitiveValue = _.maxBy(chartData.groups, "length") || "";
+    let maxLengthText: powerbi.PrimitiveValue = _.maxBy(chartData.groups.map(String), "length") || "";
 
     // we now return the size (in pixels) d3 needs for this ...
     return TextMeasurementService.measureSvgTextHeight({

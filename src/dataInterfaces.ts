@@ -41,6 +41,8 @@ export interface DataPoint {
     value: powerbi.PrimitiveValue;
     impactValue: powerbi.PrimitiveValue;
     impactName: powerbi.PrimitiveValue;
+    preparednessValue: powerbi.PrimitiveValue;
+    preparednessName: powerbi.PrimitiveValue;
     description: powerbi.PrimitiveValue;
     valueStr: string;
     tooltipInfo?: VisualTooltipDataItem[];
@@ -87,6 +89,13 @@ export interface BgSegment {
     endAngle: number;
     category: powerbi.PrimitiveValue;
     ring: number;
+}
+
+export interface FieldLine {
+    minValue: powerbi.PrimitiveValue;
+    maxValue: powerbi.PrimitiveValue;
+    colorGroup: powerbi.PrimitiveValue;
+    fieldID: string;
 }
 
 export interface IColorArray {

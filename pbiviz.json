@@ -2,9 +2,9 @@
     "visual": {
         "name": "powerbipolarchart",
         "displayName": "powerbi_polarchart",
-        "guid": "powerbipolarchart5705954AB112439F85B2A5B1695FD6F8",
+        "guid": "PowerBi_PolarChart",
         "visualClassName": "ViEvac_PolarChart",
-        "version": "1.0.0",
+        "version": "0.1.0",
         "description": "A PowerBi Visual to display data in a polar plot",
         "supportUrl": "www.paulbader.at",
         "gitHubUrl": "https://github.com/LtKvasir/powerbi_polarchart"

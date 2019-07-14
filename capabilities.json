@@ -58,25 +58,9 @@
         }
     ],
     "objects": {
-        "dataPoint": {
-            "displayName": "Data",
+        "dataBasics": {
+            "displayName": "Basic Data",
             "properties": {
-                "useImpact": {
-                    "displayName": "Use Impact",
-                    "displayNameKey": "Visual_UseImpact",
-                    "description": "Use the second measure to size data Points?",
-                    "descriptionKey": "Visual_UseImpact",
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "buckets": {
-                    "type": {
-                        "numeric": true
-                    },
-                    "displayName": "Buckets",
-                    "displayNameKey": "Visual_General_Buckets"
-                },
                 "scaleFactor": {
                     "displayName": "Data Overlap Factor",
                     "displayNameKey": "Visual_DataOverlapFactor",
@@ -84,26 +68,6 @@
                     "descriptionKey": "Visual_DataOverlapFactor",
                     "type": {
                         "numeric": true
-                    }
-                },
-                "group1color": {
-                    "displayName": "Group 1 Color",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "group2color": {
-                    "displayName": "Group 2 Color",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
                     }
                 },
                 "stroke": {
@@ -135,8 +99,158 @@
                 }
             }
         },
+        "innerCircle": {
+            "displayName": "Inner Circle",
+            "displayNameKey": "Visual_InnerCircle",
+            "properties": {
+                "show": {
+                    "displayName": "Show",
+                    "displayNameKey": "Visual_Show",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "innerOffset": {
+                    "displayName": "Inner Offset",
+                    "displayNameKey": "Visual_innerOffset",
+                    "description": "Offset in Pixels from the center of the circle to the data maximum",
+                    "descriptionKey": "Visual_innerOffset",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "fillColor": {
+                    "displayName": "Color",
+                    "displayNameKey": "Visual_LabelsFill",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "groups": {
+            "displayName": "Grouping",
+            "properties": {
+                "colors": {
+                    "displayName": "Use Colors",
+                    "displayNameKey": "Visual_FillColors",
+                    "description": "Use the colors specified here to fill groups?",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "group1color": {
+                    "displayName": "Group 1 Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "group2color": {
+                    "displayName": "Group 2 Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "showLines": {
+                    "displayName": "Show Lines",
+                    "displayNameKey": "Visual_ShowLines",
+                    "description": "Show a line between the groups",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "strokeWidth": {
+                    "displayName": "Stroke Width",
+                    "displayNameKey": "Visual_Stroke_Width",
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                },
+                "useSymbols": {
+                    "displayName": "Use Symbols",
+                    "displayNameKey": "Visual_UseSymbols",
+                    "type": {
+                        "bool": true
+                    }
+                }
+            }
+        },
         "impact": {
             "displayName": "Impact Settings",
+            "properties": {
+                "show": {
+                    "displayName": "Show",
+                    "displayNameKey": "Visual_Show",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "bucketScale": {
+                    "displayName": "Scale to buckets",
+                    "displayNameKey": "Visual_BucketScale",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "buckets": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "displayName": "Buckets",
+                    "displayNameKey": "Visual_General_Buckets"
+                },
+                "minPointRadius": {
+                    "displayName": "Min Point Radius",
+                    "displayNameKey": "Visual_MinPointRadius",
+                    "description": "Minimum radius for data points in px",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "clamp": {
+                    "displayName": "Clamp",
+                    "displayNameKey": "Visual_Clamp",
+                    "description": "Limit data points out of range to range limits",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "minValue": {
+                    "displayName": "Min Impact Value",
+                    "displayNameKey": "Visual_MinValue",
+                    "description": "Minimal Value of data axis",
+                    "descriptionKey": "Visual_MinValue",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "maxValue": {
+                    "displayName": "Max Impact Value",
+                    "displayNameKey": "Visual_MaxValue",
+                    "description": "Maximal Value of data axis",
+                    "descriptionKey": "Visual_MaxValue",
+                    "type": {
+                        "numeric": true
+                    }
+                }
+            }
+        },
+        "preparedness": {
+            "displayName": "Preparedness Settings",
             "properties": {
                 "show": {
                     "displayName": "Show",
@@ -152,23 +266,8 @@
                     "displayName": "Buckets",
                     "displayNameKey": "Visual_General_Buckets"
                 },
-                "bucketScale": {
-                    "displayName": "Scale to buckets",
-                    "displayNameKey": "Visual_BucketScale",
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "clamp": {
-                    "displayName": "Clamp",
-                    "displayNameKey": "Visual_Clamp",
-                    "description": "Limit data points out of range to range limits",
-                    "type": {
-                        "bool": true
-                    }
-                },
                 "minValue": {
-                    "displayName": "Min Value",
+                    "displayName": "Min Impact Value",
                     "displayNameKey": "Visual_MinValue",
                     "description": "Minimal Value of data axis",
                     "descriptionKey": "Visual_MinValue",
@@ -177,12 +276,189 @@
                     }
                 },
                 "maxValue": {
-                    "displayName": "Max Value",
+                    "displayName": "Max Impact Value",
                     "displayNameKey": "Visual_MaxValue",
                     "description": "Maximal Value of data axis",
                     "descriptionKey": "Visual_MaxValue",
                     "type": {
                         "numeric": true
+                    }
+                },
+                "enableColorbrewer": {
+                    "displayName": "Enable colorbrewer",
+                    "displayNameKey": "Visual_EnableColorbrewer",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "colorbrewer": {
+                    "type": {
+                        "enumeration": [
+                            {
+                                "value": "YlGn",
+                                "displayName": "YlGn"
+                            },
+                            {
+                                "value": "YlGnBu",
+                                "displayName": "YlGnBu"
+                            },
+                            {
+                                "value": "GnBu",
+                                "displayName": "GnBu"
+                            },
+                            {
+                                "value": "BuGn",
+                                "displayName": "BuGn"
+                            },
+                            {
+                                "value": "PuBuGn",
+                                "displayName": "PuBuGn"
+                            },
+                            {
+                                "value": "PuBu",
+                                "displayName": "PuBu"
+                            },
+                            {
+                                "value": "BuPu",
+                                "displayName": "BuPu"
+                            },
+                            {
+                                "value": "RdPu",
+                                "displayName": "RdPu"
+                            },
+                            {
+                                "value": "PuRd",
+                                "displayName": "PuRd"
+                            },
+                            {
+                                "value": "OrRd",
+                                "displayName": "OrRd"
+                            },
+                            {
+                                "value": "YlOrRd",
+                                "displayName": "YlOrRd"
+                            },
+                            {
+                                "value": "YlOrBr",
+                                "displayName": "YlOrBr"
+                            },
+                            {
+                                "value": "Purples",
+                                "displayName": "Purples"
+                            },
+                            {
+                                "value": "Blues",
+                                "displayName": "Blues"
+                            },
+                            {
+                                "value": "Greens",
+                                "displayName": "Greens"
+                            },
+                            {
+                                "value": "Oranges",
+                                "displayName": "Oranges"
+                            },
+                            {
+                                "value": "Reds",
+                                "displayName": "Reds"
+                            },
+                            {
+                                "value": "Greys",
+                                "displayName": "Greys"
+                            },
+                            {
+                                "value": "PuOr",
+                                "displayName": "PuOr"
+                            },
+                            {
+                                "value": "BrBG",
+                                "displayName": "BrBG"
+                            },
+                            {
+                                "value": "PRGn",
+                                "displayName": "PRGn"
+                            },
+                            {
+                                "value": "PiYG",
+                                "displayName": "PiYG"
+                            },
+                            {
+                                "value": "RdBu",
+                                "displayName": "RdBu"
+                            },
+                            {
+                                "value": "RdGy",
+                                "displayName": "RdGy"
+                            },
+                            {
+                                "value": "RdYlBu",
+                                "displayName": "RdYlBu"
+                            },
+                            {
+                                "value": "Spectral",
+                                "displayName": "Spectral"
+                            },
+                            {
+                                "value": "RdYlGn",
+                                "displayName": "RdYlGn"
+                            },
+                            {
+                                "value": "Accent",
+                                "displayName": "Accent"
+                            },
+                            {
+                                "value": "Dark2",
+                                "displayName": "Dark2"
+                            },
+                            {
+                                "value": "Paired",
+                                "displayName": "Paired"
+                            },
+                            {
+                                "value": "Pastel1",
+                                "displayName": "Paired1"
+                            },
+                            {
+                                "value": "Pastel2",
+                                "displayName": "Paired2"
+                            },
+                            {
+                                "value": "Set1",
+                                "displayName": "Set1"
+                            },
+                            {
+                                "value": "Set2",
+                                "displayName": "Set2"
+                            },
+                            {
+                                "value": "Set3",
+                                "displayName": "Set3"
+                            }
+                        ]
+                    },
+                    "displayName": "Colorbrewer",
+                    "displayNameKey": "Visual_General_Colorbrewer"
+                },
+                "gradientStart": {
+                    "displayName": "Gradient start",
+                    "displayNameKey": "Visual_GradientStart",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "gradientEnd": {
+                    "displayName": "Gradient end",
+                    "displayNameKey": "Visual_GradientEnd",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
                     }
                 }
             }
@@ -391,46 +667,6 @@
                 "color": {
                     "displayName": "Text Color",
                     "displayNameKey": "Visual_TextColor",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "innerCircle": {
-            "displayName": "Inner Circle",
-            "displayNameKey": "Visual_InnerCircle",
-            "properties": {
-                "show": {
-                    "displayName": "Show",
-                    "displayNameKey": "Visual_Show",
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "innerOffset": {
-                    "displayName": "Inner Offset",
-                    "displayNameKey": "Visual_innerOffset",
-                    "description": "Offset in Pixels from the center of the circle to the data maximum",
-                    "descriptionKey": "Visual_innerOffset",
-                    "type": {
-                        "numeric": true
-                    }
-                },
-                "fill": {
-                    "displayName": "Fill",
-                    "displayNameKey": "Visual_Fill",
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "fillColor": {
-                    "displayName": "Color",
-                    "displayNameKey": "Visual_LabelsFill",
                     "type": {
                         "fill": {
                             "solid": {
