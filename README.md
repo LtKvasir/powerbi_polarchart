@@ -8,8 +8,10 @@ This project includes a PowerBi Custom Visual that builds a polar chart.
 # Features not yet there but I'd like to add
 
 - Icons
-- Labels
+- Labels (LABEL FOR CAT. SUBFIELDS IN RING)
 - Cut text lenghts
 - Legends
 - Animations
 - FIX CLASSES: NO SPACES, ...
+- CLEVER COLORPICKER FOR CATEGORIES: SHOW AS MANY COLORS AS THERE ARE CATEGORIES
+
