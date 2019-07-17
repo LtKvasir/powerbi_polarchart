@@ -80,6 +80,7 @@ export interface ChartSizes {
     radarCY: number;
     axisLabelHeight: number;    
     angleOffSet: number;
+    legendHeight: number;
 }
 
 export interface BgSegment {

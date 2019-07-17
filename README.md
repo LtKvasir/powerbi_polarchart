@@ -11,6 +11,5 @@ This project includes a PowerBi Custom Visual that builds a polar chart.
 - Labels
 - Cut text lenghts
 - Legends
-- switch: max impact in angle or total px
 - Animations
 - FIX CLASSES: NO SPACES, ...

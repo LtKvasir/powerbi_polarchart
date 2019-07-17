@@ -45,18 +45,18 @@ export class Settings extends DataViewObjectsParser {
     public groups: GroupSettings = new GroupSettings();
     public impact: impactSettings = new impactSettings();
     public preparedness: preparednessSettings = new preparednessSettings();
-
-
     public categoryAxis: categoryAxisSettings = new categoryAxisSettings();
     public categoryAxisLabels: categoryLabelSettings = new categoryLabelSettings();
     public dataAxis: DataAxisSettings = new DataAxisSettings();
     public dataAxisLabels: DataAxisLabelsSettings = new DataAxisLabelsSettings();
+    public legend: LegendSettings = new LegendSettings();
 }
 
 /**
  * Settings for the dataPoints
  */
 export class dataSettings {
+    public useFixedRadius: boolean = false;
     public scaleFactor: number = 1;
     public stroke: string = "#white";
     public strokeWidth: number = 1;
@@ -139,6 +139,13 @@ export class DataAxisLabelsSettings {
     public fontFamily: string = "Arial";
     public color: string = "white";
     public maxTextSymbol: number = 25;
+}
+
+export class LegendSettings {
+    public show: boolean = true;
+    public fill: string = "#aaa";
+    public fontSize: number = DefaultFontSize;
+    public fontFamily: string = "Arial";
 }
 
 /**

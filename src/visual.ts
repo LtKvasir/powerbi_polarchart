@@ -50,6 +50,9 @@ import {
 } from "powerbi-visuals-utils-tooltiputils";
 import { pixelConverter as PixelConverter } from "powerbi-visuals-utils-typeutils";
 import { valueFormatter, textMeasurementService } from "powerbi-visuals-utils-formattingutils";
+import TextMeasurementService = textMeasurementService.textMeasurementService;
+
+
 // import { createLinearColorScale, LinearColorScale, ColorHelper } from "powerbi-visuals-utils-colorutils";
 // import { axis } from "powerbi-visuals-utils-chartutils";
 
@@ -107,7 +110,16 @@ export class ViEvac_PolarChart implements IVisual {
 
     // ----------------------------- BASIC SETTINGS --------------------------------------
     private margin: IMargin = { left: 5, right: 5, bottom: 5, top: 5 };
-    private chartSizes: ChartSizes = { vpHeight: 0, vpWidth: 0, radarR: 0, radarCX: 0, radarCY: 0, axisLabelHeight: 0, angleOffSet: -90 };
+    private chartSizes: ChartSizes = {
+        vpHeight: 0,
+        vpWidth: 0,
+        radarR: 0,
+        radarCX: 0,
+        radarCY: 0,
+        axisLabelHeight: 0,
+        angleOffSet: -90,
+        legendHeight: 0,
+    };
 
     private static animationDuration: number = 1000;
     private static DataStepMaxLimit: number = 10;
@@ -116,6 +128,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static innerOffsetLimitFactor: number = 0.5;
     private static minPointRadius: number = 2;
     private static symbolCorrectionFactor: number = 3.5;
+    private static maxDataFieldAngle: number = 360 / 12;
 
     private static BucketCountMaxLimit: number = 18;
     private static BucketCountMinLimit: number = 2;
@@ -124,6 +137,9 @@ export class ViEvac_PolarChart implements IVisual {
     private static LabelOffsetDY: number = 2;
 
     private CategoryLabelOffset: number = 5;
+    private LegendLabelOffset: number = 2;
+
+
 
     // ----------------------------- USELESS CONSTANTS  ----------------------------------
     private static AttrX: string = "x";
@@ -188,6 +204,8 @@ export class ViEvac_PolarChart implements IVisual {
     private static ClsDataRing: string = "DataRing_"
     private static ClsDataCircles: string = "DataPoint"
     private static ClsGroupLines: string = "GroupLine"
+    private static ClsLegend: string = "Legend";
+
 
     /**
      * Converts the PowerBI input data (from the databinding) to a format that we can work with ...
@@ -772,9 +790,25 @@ export class ViEvac_PolarChart implements IVisual {
             }
 
             // we calculate the radius of half the radar and scale it with our overlapping factor to get data size
+            // However there are a few things ... we don't want it to be more than 1/12 of an circle and we might
+            // want a fixed size instead of a factor (in case we select points and want sizes to stay constant)
             let radarHalfR = dataScale((DataAxisMaxValue - DataAxisMinValue) / 2 + DataAxisMinValue)
-            let dataCircleR = radarHalfR * this.settings.dataBasics.scaleFactor * datafieldAngle / 2 * Math.PI / 180 -
-                this.settings.impact.minPointRadius
+            let dataCircleR: number = 0
+
+            if (settings.dataBasics.useFixedRadius) {
+                // fixed radius. We still check for too large we do ...
+                let maxDataPointR = radarHalfR * ViEvac_PolarChart.maxDataFieldAngle / 2 * Math.PI / 180 -
+                    this.settings.impact.minPointRadius
+                dataCircleR = Math.min(settings.dataBasics.scaleFactor, maxDataPointR)
+            } else {
+                // dynamic data ...
+                let maxDataFieldAngle = this.settings.dataBasics.scaleFactor * datafieldAngle
+                maxDataFieldAngle = Math.min(ViEvac_PolarChart.maxDataFieldAngle, maxDataFieldAngle)
+
+                dataCircleR = radarHalfR * maxDataFieldAngle / 2 * Math.PI / 180 -
+                    this.settings.impact.minPointRadius
+            }
+
 
             // we start with lines (and later do circles) ...
             var lineData: FieldLine[] = []
@@ -932,6 +966,17 @@ export class ViEvac_PolarChart implements IVisual {
                     .classed(ViEvac_PolarChart.ClsDataCircles, true)
             }
 
+            // ---------------------------------------------------------------------------------
+            // now ... what about legends? (this is going to hurt)
+            // ---------------------------------------------------------------------------------
+
+            if (settings.legend.show) {
+                // we do start with the impact ...
+                if (settings.impact.show) {
+
+                }
+            }
+
             // we want tooltips ...
             this.tooltipServiceWrapper.addTooltip(dataCirclesMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
                 return tooltipEvent.data.tooltipInfo;
@@ -1029,6 +1074,11 @@ export class ViEvac_PolarChart implements IVisual {
         // we now calculate the size and position of the main (polar) chart ...
         this.chartSizes.axisLabelHeight = getCategoryAxisHeight(chartData, this.settings)
         this.chartSizes.radarR = Math.floor((Math.min(this.chartSizes.vpHeight, this.chartSizes.vpWidth) - 2 * this.chartSizes.axisLabelHeight - this.CategoryLabelOffset) / 2) - 1
+
+        // calculate the legend and subtract it from the R
+        this.chartSizes.legendHeight = this.getLegendHeight(chartData)
+        this.chartSizes.radarR -= this.chartSizes.legendHeight / 2
+
         this.chartSizes.radarCX = (this.chartSizes.vpWidth / 2)
         this.chartSizes.radarCY = (this.chartSizes.vpHeight / 2)
         this.chartSizes.angleOffSet = this.settings.categoryAxis.angleOffSet
@@ -1159,5 +1209,43 @@ export class ViEvac_PolarChart implements IVisual {
         let feMerge = filter.append('feMerge')
         let feMergeNode_1 = feMerge.append('feMergeNode').attr('in', 'coloredBlur')
         let feMergeNode_2 = feMerge.append('feMergeNode').attr('in', 'SourceGraphic')
+    }
+
+    /**
+     * function to calculate the legend height
+     * @param text 
+     * @param dataCircleR 
+     * @param settings 
+     * @param offSet 
+     */
+    private getLegendHeight(chartData: ChartData): number {
+
+        // if the legend is turned off, we return 0
+        if (!this.settings.legend.show) { return 0 }
+
+        let text: powerbi.PrimitiveValue = _.maxBy([chartData.dataPoints[0].impactName, chartData.dataPoints[0].impactName], "length") || "";
+
+
+        // now we need four things: legend Text height (2 times), dataPoint size and offset
+        let labelHeight = TextMeasurementService.measureSvgTextHeight({
+            fontSize: PixelConverter.toString(this.settings.legend.fontSize),
+            text: text.toString().trim(),
+            fontFamily: this.settings.legend.fontFamily
+        })
+
+        // we do need to do this the hard way to avoid a loop in the logic (sizing the radar by the size of points that are sized by the radar)
+        // to avoid this we assume maximum size possible (which costs us space ...) at least in dynamic mode ...
+        let dataFieldAngle = Math.max(360 / chartData.uniqueFields.length, ViEvac_PolarChart.maxDataFieldAngle)
+        let dataCircleR = this.chartSizes.radarR / 2 * dataFieldAngle / 2 * Math.PI / 180 -
+            this.settings.impact.minPointRadius
+
+        if (this.settings.dataBasics.useFixedRadius) {
+            dataCircleR = Math.min(this.settings.dataBasics.scaleFactor, dataCircleR)
+        }
+
+        console.log(labelHeight + " : " + text.toString() + " dPH: " + dataCircleR * 2)
+
+        // we now return the size (in pixels) d3 needs for this ...
+        return labelHeight * 2 + (2 * dataCircleR) + this.LegendLabelOffset * 2
     }
 }
