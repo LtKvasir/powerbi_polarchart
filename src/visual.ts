@@ -786,7 +786,6 @@ export class ViEvac_PolarChart implements IVisual {
             let impactScale = this.getImpactScale(chartData, this.settings)
             if (settings.preparedness.show) {
                 var preparednessScale = this.getPreparednessScale(chartData, this.settings)
-                console.log("PREP", preparednessScale)
             }
 
             // we calculate the radius of half the radar and scale it with our overlapping factor to get data size
@@ -1075,12 +1074,12 @@ export class ViEvac_PolarChart implements IVisual {
         this.chartSizes.axisLabelHeight = getCategoryAxisHeight(chartData, this.settings)
         this.chartSizes.radarR = Math.floor((Math.min(this.chartSizes.vpHeight, this.chartSizes.vpWidth) - 2 * this.chartSizes.axisLabelHeight - this.CategoryLabelOffset) / 2) - 1
 
-        // calculate the legend and subtract it from the R
+        // calculate the legend and subtract it from the R (but only if we are broader than high ...)
         this.chartSizes.legendHeight = this.getLegendHeight(chartData)
-        this.chartSizes.radarR -= this.chartSizes.legendHeight / 2
+        this.chartSizes.radarR += Math.max(Math.min(0, this.chartSizes.vpHeight - this.chartSizes.vpWidth - this.chartSizes.legendHeight), -this.chartSizes.legendHeight) / 2
 
         this.chartSizes.radarCX = (this.chartSizes.vpWidth / 2)
-        this.chartSizes.radarCY = (this.chartSizes.vpHeight / 2)
+        this.chartSizes.radarCY = ((this.chartSizes.vpHeight - this.chartSizes.legendHeight) / 2)
         this.chartSizes.angleOffSet = this.settings.categoryAxis.angleOffSet
     }
 
@@ -1242,8 +1241,6 @@ export class ViEvac_PolarChart implements IVisual {
         if (this.settings.dataBasics.useFixedRadius) {
             dataCircleR = Math.min(this.settings.dataBasics.scaleFactor, dataCircleR)
         }
-
-        console.log(labelHeight + " : " + text.toString() + " dPH: " + dataCircleR * 2)
 
         // we now return the size (in pixels) d3 needs for this ...
         return labelHeight * 2 + (2 * dataCircleR) + this.LegendLabelOffset * 2
