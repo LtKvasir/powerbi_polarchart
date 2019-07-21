@@ -151,6 +151,16 @@
                         "bool": true
                     }
                 },
+                "fill": {
+                    "displayName": "Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
                 "group1color": {
                     "displayName": "Group 1 Color",
                     "type": {

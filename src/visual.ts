@@ -37,9 +37,20 @@ import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import IColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette
 import IViewport = powerbi.IViewport;
 
+import VisualObjectInstance = powerbi.VisualObjectInstance;
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
-import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumeration = powerbi.VisualObjectInstanceEnumeration;
+import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+
+import DataView = powerbi.DataView;
+import DataViewObjects = powerbi.DataViewObjects;
+
+import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
+
+import ISelectionIdBuilder = powerbi.visuals.ISelectionIdBuilder;
+import ISelectionId = powerbi.visuals.ISelectionId;
+
+
 
 // ------------------------------ POWERBI LIBRARIES ----------------------------------
 import {
@@ -50,10 +61,10 @@ import {
 } from "powerbi-visuals-utils-tooltiputils";
 import { pixelConverter as PixelConverter } from "powerbi-visuals-utils-typeutils";
 import { valueFormatter, textMeasurementService } from "powerbi-visuals-utils-formattingutils";
+
 import TextMeasurementService = textMeasurementService.textMeasurementService;
 
-
-// import { createLinearColorScale, LinearColorScale, ColorHelper } from "powerbi-visuals-utils-colorutils";
+import { createLinearColorScale, LinearColorScale, ColorHelper } from "powerbi-visuals-utils-colorutils";
 // import { axis } from "powerbi-visuals-utils-chartutils";
 
 import { manipulation } from "powerbi-visuals-utils-svgutils";
@@ -74,7 +85,7 @@ import {
 } from "./settings";
 
 import {
-    IMargin, ChartSizes, ChartData, DataPoint, BgSegment, IColorArray, IColorBrewerSettings, FieldLine
+    IMargin, ChartSizes, ChartData, DataPoint, Group, BgSegment, IColorArray, IColorBrewerSettings, FieldLine
 } from "./dataInterfaces";
 
 import {
@@ -86,7 +97,7 @@ import {
 } from "./utilities";
 import { text } from "d3";
 import { numberFormat } from "powerbi-visuals-utils-formattingutils/lib/src/formattingService/formattingService";
-import { version } from "bluebird";
+import { version, any } from "bluebird";
 
 
 export class ViEvac_PolarChart implements IVisual {
@@ -98,6 +109,8 @@ export class ViEvac_PolarChart implements IVisual {
     private mainChart: Selection<any>;
     private dataView: DataView;
     private viewport: IViewport;
+    private chartData: ChartData;
+
 
     private target: HTMLElement;
     private updateCount: number;
@@ -107,6 +120,8 @@ export class ViEvac_PolarChart implements IVisual {
     private colorPalette: IColorPalette;
 
     private tooltipServiceWrapper: ITooltipServiceWrapper;
+    private selectionIdBuilder: ISelectionIdBuilder;
+
 
     // ----------------------------- BASIC SETTINGS --------------------------------------
     private margin: IMargin = { left: 5, right: 5, bottom: 5, top: 5 };
@@ -139,6 +154,11 @@ export class ViEvac_PolarChart implements IVisual {
     private CategoryLabelOffset: number = 5;
     private LegendLabelOffset: number = 2;
 
+    // ----------------------------- FOR PROPERTY PANE -----------------------------------
+    private static GroupPropertyIdentifier: DataViewObjectPropertyIdentifier = {
+        objectName: "groups",
+        propertyName: "fill"
+    };
 
 
     // ----------------------------- USELESS CONSTANTS  ----------------------------------
@@ -260,18 +280,31 @@ export class ViEvac_PolarChart implements IVisual {
                     value: dataView.categorical.values[0].values[0]
                 });
 
+                // we do strange things for selections ...
+                const identity: any = this.selectionIdBuilder.createSelectionId();
+
                 // now - more interesting - get the group and values. Let's push 'em to data points ...
                 // we also need to check for a second category value and add it if it is given ...
                 let value = groupArray.values[index];
                 let subCategory = (dataView.categorical.categories.length == 2) ? dataView.categorical.categories[1].values[index].toString() : ""
                 let valueName = groupArray.source.displayName
 
+                // colors are difficult. We use some helpers and things ...
+                const initialColor = this.colorPalette.getColor(<string>groupArray.source.groupName.toString()).value;
+                const parsedColor: string = this.getColor(
+                    ViEvac_PolarChart.GroupPropertyIdentifier,
+                    initialColor,
+                    groupArray,
+                    name
+                );
+
                 tempDataPoints.push({
                     group: {
                         group: groupArray.source.groupName,
                         category: category,
                         groupId: groupArray.source.groupName + "-" + category,
-                        color: this.colorPalette.getColor(groupArray.source.groupName.toString()).value
+                        color: parsedColor,
+                        identity: identity
                     },
                     category: category,
                     subCategory: subCategory,
@@ -285,7 +318,9 @@ export class ViEvac_PolarChart implements IVisual {
                     preparednessName: "",
                     preparednessValue: "",
                     valueStr: groupFormatter.format(value),
-                    tooltipInfo: []
+                    tooltipInfo: [],
+                    identity: identity,
+                    selected: false,
                 });
             });
         });
@@ -300,8 +335,8 @@ export class ViEvac_PolarChart implements IVisual {
             return CatA < CatB ? -1 : CatA > CatB ? 1 : 0;
         })
 
-        var groups = tempDataPoints.map(v => v.group.group).filter((value, index, self) => {
-            return self.indexOf(value) === index;
+        var groups = tempDataPoints.map(v => v.group).filter((value, index, self) => {
+            return self.map(v => v.group).indexOf(value.group) === index;
         })
 
         var categories = tempDataPoints.map(v => v.category).filter((value, index, self) => {
@@ -334,11 +369,12 @@ export class ViEvac_PolarChart implements IVisual {
                 measureNames.push(field.valueName)
                 measureValues.push(field.value)
 
-                // overwrite colors in case ...
+                // overwrite colors in case ... (TBD: REMOVE)
+                let groupNames = groups.map(v => v.group)
                 if (this.settings.groups.colors) {
-                    if (groups.indexOf(field.group.group) == 0) {
+                    if (groupNames.indexOf(field.group.group) == 0) {
                         field.group.color = this.settings.groups.group1color
-                    } else if (groups.indexOf(field.group.group) == 1) {
+                    } else if (groupNames.indexOf(field.group.group) == 1) {
                         field.group.color = this.settings.groups.group2color
                     }
                 }
@@ -388,9 +424,13 @@ export class ViEvac_PolarChart implements IVisual {
                 preparednessValue: (measureNames.length > 2) ? measureValues[2] : "",
                 description: (measureNames.length > 3) ? measureValues[3] : "",
                 valueStr: thePoint.valueStr,
-                tooltipInfo: tooltipArray
+                tooltipInfo: tooltipArray,
+                identity: thePoint.identity,
+                selected: thePoint.selected
             });
         })
+        
+        console.log("GROUPS FIRST", groups)
 
         // and return it we do ...
         return <ChartData>{
@@ -427,6 +467,8 @@ export class ViEvac_PolarChart implements IVisual {
         this.tooltipServiceWrapper = createTooltipServiceWrapper(
             this.host.tooltipService,
             element);
+
+        this.selectionIdBuilder = this.host.createSelectionIdBuilder();
     }
 
     /**
@@ -456,7 +498,8 @@ export class ViEvac_PolarChart implements IVisual {
 
             // get our data (kinda important) ...
             let dataView: DataView = this.dataView = options.dataViews[0];
-            let chartData: ChartData = this.converter(dataView);
+            this.chartData = this.converter(dataView);
+            let chartData = this.chartData
 
             // set size variables within the class for further use  ...
             this.setChartSizes(options.viewport, chartData)
@@ -888,7 +931,7 @@ export class ViEvac_PolarChart implements IVisual {
                         // here is magic. We need to know which group it is (get an index) and then
                         // call a symbolgenerator. However the type needs to be a symbol -> thus we call "d3"
                         // also size is radius squared by definition of symbols ...
-                        let groupIdx = chartData.groups.indexOf(d.group.group)
+                        let groupIdx = chartData.groups.map(v => v.group).indexOf(d.group.group)
                         let size = (settings.impact.show) ? dataCircleR * impactScale(d.impactValue) + settings.impact.minPointRadius : dataCircleR
                         symbolGenerator
                             .type(d3[ViEvac_PolarChart.d3Symbols[groupIdx]])
@@ -1051,8 +1094,75 @@ export class ViEvac_PolarChart implements IVisual {
         const instanceEnumeration: VisualObjectInstanceEnumeration =
             Settings.enumerateObjectInstances(settings, options);
 
+        if (options.objectName === ViEvac_PolarChart.GroupPropertyIdentifier.objectName) {
+            this.enumerateColors(this.chartData.groups, instanceEnumeration);
+        }
+
         return instanceEnumeration || [];
     }
+
+    /**
+     * Enumerates all the datapoints and outputs properties ...
+     * @param groups 
+     * @param instanceEnumeration 
+     */
+    private enumerateColors(groups: Group[], instanceEnumeration: VisualObjectInstanceEnumeration): void {
+
+        console.log("GROUPS", groups)
+        if (groups && groups.length > 0) {
+            groups.forEach((group: Group) => {
+                const displayName: string = group.group.toString();
+                const identity: ISelectionId = group.identity as ISelectionId;
+
+                console.log("GROUP-ID", group.identity)
+
+                this.addAnInstanceToEnumeration(instanceEnumeration, {
+                    displayName,
+                    objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
+                    selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
+                    properties: {
+                        fill: { solid: { color: group.color } }
+                    }
+                });
+            });
+        }
+    }
+
+    /**
+     * Adds an instance to the property enumeration
+     * @param instanceEnumeration 
+     * @param instance 
+     */
+    private addAnInstanceToEnumeration(
+        instanceEnumeration: VisualObjectInstanceEnumeration,
+        instance: VisualObjectInstance
+    ): void {
+
+        if ((instanceEnumeration as VisualObjectInstanceEnumerationObject).instances) {
+            (instanceEnumeration as VisualObjectInstanceEnumerationObject)
+                .instances
+                .push(instance);
+        } else {
+            (instanceEnumeration as VisualObjectInstance[]).push(instance);
+        }
+    }
+
+    private getColor(
+        properties: DataViewObjectPropertyIdentifier,
+        defaultColor: string,
+        objects: DataViewObjects,
+        measureKey: string
+        ): string {
+
+        const colorHelper: ColorHelper = new ColorHelper(
+            this.colorPalette,
+            properties,
+            defaultColor
+        );
+
+        return colorHelper.getColorForMeasure(objects, measureKey, "foreground");
+    }
+
 
     /**
     * Method to set the most important size variables of. A good one this is ...

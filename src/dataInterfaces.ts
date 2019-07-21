@@ -29,9 +29,17 @@ import powerbi from "powerbi-visuals-api";
 import { valueFormatter } from "powerbi-visuals-utils-formattingutils";
 import IValueFormatter = valueFormatter.IValueFormatter;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+
+// do selectable datapoints ...
+import { interactivitySelectionService } from "powerbi-visuals-utils-interactivityutils";
+import SelectableDataPoint = interactivitySelectionService.SelectableDataPoint;
+import ISelectionId = powerbi.visuals.ISelectionId;
+
+
+
 import { numericSequence } from "powerbi-visuals-utils-typeutils";
 
-export interface DataPoint {
+export interface DataPoint extends SelectableDataPoint {
     category: powerbi.PrimitiveValue;
     subCategory: powerbi.PrimitiveValue;
     valueName: powerbi.PrimitiveValue;
@@ -52,7 +60,8 @@ export interface Group {
     groupId: powerbi.PrimitiveValue;
     group: powerbi.PrimitiveValue;
     category: powerbi.PrimitiveValue;
-    color: powerbi.PrimitiveValue;
+    color?: string;
+    identity: ISelectionId;
 }
 
 export interface ChartData {
@@ -60,7 +69,7 @@ export interface ChartData {
     categories: powerbi.PrimitiveValue[];
     categoryFields: powerbi.PrimitiveValue[];
     uniqueFields: string[];
-    groups: powerbi.PrimitiveValue[];
+    groups: Group[];
     categoryValueFormatter: IValueFormatter;
     valueFormatter: IValueFormatter;
 }
