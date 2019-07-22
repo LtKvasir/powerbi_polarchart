@@ -85,7 +85,8 @@ import {
 } from "./settings";
 
 import {
-    IMargin, ChartSizes, ChartData, DataPoint, Group, BgSegment, IColorArray, IColorBrewerSettings, FieldLine
+    // IMargin, ChartSizes, ChartData, DataPoint, Group, BgSegment, IColorArray, IColorBrewerSettings, FieldLine
+    IMargin, ChartSizes, ChartData, DataPoint, Measure, BgSegment, IColorArray, IColorBrewerSettings, FieldLine
 } from "./dataInterfaces";
 
 import {
@@ -281,92 +282,81 @@ export class ViEvac_PolarChart implements IVisual {
                 });
 
                 // we do strange things for selections ...
-                let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
+                // let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
 
-                let identity: any = selectionIdBuilder
-                    // .withCategory(dataView.categorical.categories[0], index)
-                    // .withMeasure(groupArray.source.queryName)
-                    .withSeries(dataView.categorical.values, dataView.categorical.values[groupIdx])
-                    .createSelectionId();
+                // let identity: any = selectionIdBuilder
+                //     // .withCategory(dataView.categorical.categories[0], index)
+                //     // .withMeasure(groupArray.source.queryName)
+                //     .withSeries(dataView.categorical.values, dataView.categorical.values[groupIdx])
+                //     .createSelectionId();
 
                 // now - more interesting - get the group and values. Let's push 'em to data points ...
-                // we also need to check for a second category value and add it if it is given ...
-                let value = groupArray.values[index];
-                let subCategory = (dataView.categorical.categories.length == 2) ? dataView.categorical.categories[1].values[index].toString() : ""
-                let valueName = groupArray.source.displayName
-                let name = <string>groupArray.source.groupName.toString()
 
-                // colors are difficult. We use some helpers and things ...
-                let initialColor = this.colorPalette.getColor(name).value;
-                let parsedColor: string = this.getColor(
-                    ViEvac_PolarChart.GroupPropertyIdentifier,
-                    initialColor,
-                    dataView.metadata.objects,
-                    name
-                );
+                // first get the categories array by looping through 'em ...
+                let category: string[] = []
+                dataView.categorical.categories.forEach(v => {
+                    category.push(v.values[index].toString())
+                })
 
+                // now we assemble the temporary array. We do use the dataPoint interface for convenience issues 
+                // and fill not used thingies with empties ...
                 tempDataPoints.push({
-                    group: {
-                        group: groupArray.source.groupName,
-                        category: category,
-                        groupId: groupArray.source.groupName + "-" + category,
-                        color: parsedColor,
-                        identity: identity
-                    },
                     category: category,
-                    subCategory: subCategory,
-                    uniqueFieldID: category + "-" + subCategory,
-                    uniqueGroupFieldID: category + "-" + subCategory + "-" + groupArray.source.groupName,
-                    valueName: valueName,
-                    value: value,
-                    impactName: "",
-                    impactValue: "",
-                    description: "",
-                    preparednessName: "",
-                    preparednessValue: "",
-                    valueStr: groupFormatter.format(value),
-                    tooltipInfo: [],
-                    identity: identity,
-                    selected: false,
-                });
+                    uniqueCategory: category.join('-'),
+                    group: <string>groupArray.source.groupName,
+                    values: new Array<Measure>({
+                        measureName: <string>groupArray.source.displayName,
+                        measureValue: <string>groupArray.values[index]
+                    }),
+                    color: "",
+                    identity: "",
+                    selected: false
+                })
             });
         });
 
         // ok. now we do have separate datapoints for things that do belong together. 
         // we first create the unique arrays (which are ok already) then we'll loop and merge 'em
         // create the data and return it ...
-        tempDataPoints = tempDataPoints.sort(function (a, b) {
-            // we sort the dataPoints by the Y group values
-            var CatA = a.uniqueFieldID.toString().toUpperCase();
-            var CatB = b.uniqueFieldID.toString().toUpperCase();
-            return CatA < CatB ? -1 : CatA > CatB ? 1 : 0;
-        })
 
         var groups = tempDataPoints.map(v => v.group).filter((value, index, self) => {
-            return self.map(v => v.group).indexOf(value.group) === index;
-        })
-
-        var categories = tempDataPoints.map(v => v.category).filter((value, index, self) => {
             return self.indexOf(value) === index;
         })
 
-        var categoryFields = tempDataPoints.map(v => v.subCategory).filter((value, index, self) => {
-            return self.indexOf(value) === index;
-        })
-
-        var uniqueFields = tempDataPoints.map(v => v.uniqueFieldID).filter((value, index, self) => {
-            return self.indexOf(value) === index;
-        })
-
-        var uniqueGroupFields = tempDataPoints.map(v => v.uniqueGroupFieldID).filter((value, index, self) => {
+        var uniqueCategories = tempDataPoints.map(v => v.uniqueCategory).filter((value, index, self) => {
             return self.indexOf(value) === index;
         })
 
         // loop 'em ... do it ... do it ... do it ...
+        // (ok well - i'll explain) we do loop the unique categoryfields & group fields and merge values ...
+
+        // TBD HERE !
         uniqueGroupFields.forEach((uniqueField) => {
             // so these are the unique Fields ...
             let measureNames: powerbi.PrimitiveValue[] = [];
             let measureValues: powerbi.PrimitiveValue[] = [];
+
+
+            // tempDataPoints = tempDataPoints.sort(function (a, b) {
+            //     // we sort the dataPoints by the Y group values
+            //     var CatA = a.uniqueFieldID.toString().toUpperCase();
+            //     var CatB = b.uniqueFieldID.toString().toUpperCase();
+            //     return CatA < CatB ? -1 : CatA > CatB ? 1 : 0;
+            // })
+
+
+            // let value = groupArray.values[index];
+            // let valueName = groupArray.source.displayName
+            // let name = <string>groupArray.source.groupName.toString()
+
+            // // colors are difficult. We use some helpers and things ...
+            // let initialColor = this.colorPalette.getColor(name).value;
+            // let parsedColor: string = this.getColor(
+            //     ViEvac_PolarChart.GroupPropertyIdentifier,
+            //     initialColor,
+            //     dataView.metadata.objects,
+            //     name
+            // );
 
             tempDataPoints.filter(function (dPoint) {
                 // this filters all datapoints for the unique field ...
@@ -1119,7 +1109,7 @@ export class ViEvac_PolarChart implements IVisual {
                 const displayName: string = group.group.toString();
                 const identity: ISelectionId = group.identity as ISelectionId;
 
-                console.log("GROUP-ID", identity)
+                console.log("GROUP-KEY", identity.getKey())
                 console.log("NORMAL", ColorHelper.normalizeSelector(identity.getSelector(), false))
                 // debugger;
 

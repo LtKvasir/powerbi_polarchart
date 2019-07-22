@@ -40,36 +40,24 @@ import ISelectionId = powerbi.visuals.ISelectionId;
 import { numericSequence } from "powerbi-visuals-utils-typeutils";
 
 export interface DataPoint extends SelectableDataPoint {
-    category: powerbi.PrimitiveValue;
-    subCategory: powerbi.PrimitiveValue;
-    valueName: powerbi.PrimitiveValue;
-    uniqueFieldID: string;
-    uniqueGroupFieldID: string;
-    group: Group;
-    value: powerbi.PrimitiveValue;
-    impactValue: powerbi.PrimitiveValue;
-    impactName: powerbi.PrimitiveValue;
-    preparednessValue: powerbi.PrimitiveValue;
-    preparednessName: powerbi.PrimitiveValue;
-    description: powerbi.PrimitiveValue;
-    valueStr: string;
+    category: string[];
+    uniqueCategory: string;
+    group: string;
+    values: Measure[];
+    color: string;
     tooltipInfo?: VisualTooltipDataItem[];
 }
 
-export interface Group {
-    groupId: powerbi.PrimitiveValue;
-    group: powerbi.PrimitiveValue;
-    category: powerbi.PrimitiveValue;
-    color?: string;
-    identity: ISelectionId;
+export interface Measure {
+    measureName: string;
+    measureValue: string;
 }
 
 export interface ChartData {
     dataPoints: DataPoint[];
-    categories: powerbi.PrimitiveValue[];
-    categoryFields: powerbi.PrimitiveValue[];
-    uniqueFields: string[];
-    groups: Group[];
+    categories: string[];
+    uniqueCategories: string[]
+    groups: string[];
     categoryValueFormatter: IValueFormatter;
     valueFormatter: IValueFormatter;
 }
