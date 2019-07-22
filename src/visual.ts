@@ -156,7 +156,7 @@ export class ViEvac_PolarChart implements IVisual {
 
     // ----------------------------- FOR PROPERTY PANE -----------------------------------
     private static GroupPropertyIdentifier: DataViewObjectPropertyIdentifier = {
-        objectName: "groups",
+        objectName: "colorSelector",
         propertyName: "fill"
     };
 
@@ -273,7 +273,7 @@ export class ViEvac_PolarChart implements IVisual {
         // will get all datapoints there are ... 
         dataView.categorical.categories[0].values.forEach((category, index) => {
             // now cycle through every group (group) within the category
-            dataView.categorical.values.forEach((groupArray) => {
+            dataView.categorical.values.forEach((groupArray, groupIdx) => {
                 // get the formatting (why ever) ...
                 let groupFormatter = valueFormatter.create({
                     format: groupArray.source.format,
@@ -281,20 +281,27 @@ export class ViEvac_PolarChart implements IVisual {
                 });
 
                 // we do strange things for selections ...
-                const identity: any = this.selectionIdBuilder.createSelectionId();
+                let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
+
+                let identity: any = selectionIdBuilder
+                    // .withCategory(dataView.categorical.categories[0], index)
+                    // .withMeasure(groupArray.source.queryName)
+                    .withSeries(dataView.categorical.values, dataView.categorical.values[groupIdx])
+                    .createSelectionId();
 
                 // now - more interesting - get the group and values. Let's push 'em to data points ...
                 // we also need to check for a second category value and add it if it is given ...
                 let value = groupArray.values[index];
                 let subCategory = (dataView.categorical.categories.length == 2) ? dataView.categorical.categories[1].values[index].toString() : ""
                 let valueName = groupArray.source.displayName
+                let name = <string>groupArray.source.groupName.toString()
 
                 // colors are difficult. We use some helpers and things ...
-                const initialColor = this.colorPalette.getColor(<string>groupArray.source.groupName.toString()).value;
-                const parsedColor: string = this.getColor(
+                let initialColor = this.colorPalette.getColor(name).value;
+                let parsedColor: string = this.getColor(
                     ViEvac_PolarChart.GroupPropertyIdentifier,
                     initialColor,
-                    groupArray,
+                    dataView.metadata.objects,
                     name
                 );
 
@@ -429,8 +436,6 @@ export class ViEvac_PolarChart implements IVisual {
                 selected: thePoint.selected
             });
         })
-        
-        console.log("GROUPS FIRST", groups)
 
         // and return it we do ...
         return <ChartData>{
@@ -1107,14 +1112,16 @@ export class ViEvac_PolarChart implements IVisual {
      * @param instanceEnumeration 
      */
     private enumerateColors(groups: Group[], instanceEnumeration: VisualObjectInstanceEnumeration): void {
-
-        console.log("GROUPS", groups)
         if (groups && groups.length > 0) {
+            // if there is more than one group we iterate it ...
             groups.forEach((group: Group) => {
+                // for the properties (Settings) we need a display name and the identity (bc. it is dynamically to be identified)
                 const displayName: string = group.group.toString();
                 const identity: ISelectionId = group.identity as ISelectionId;
 
-                console.log("GROUP-ID", group.identity)
+                console.log("GROUP-ID", identity)
+                console.log("NORMAL", ColorHelper.normalizeSelector(identity.getSelector(), false))
+                // debugger;
 
                 this.addAnInstanceToEnumeration(instanceEnumeration, {
                     displayName,
@@ -1125,6 +1132,9 @@ export class ViEvac_PolarChart implements IVisual {
                     }
                 });
             });
+
+            console.log("INSTANCE", instanceEnumeration)
+
         }
     }
 
@@ -1152,7 +1162,7 @@ export class ViEvac_PolarChart implements IVisual {
         defaultColor: string,
         objects: DataViewObjects,
         measureKey: string
-        ): string {
+    ): string {
 
         const colorHelper: ColorHelper = new ColorHelper(
             this.colorPalette,
@@ -1162,7 +1172,6 @@ export class ViEvac_PolarChart implements IVisual {
 
         return colorHelper.getColorForMeasure(objects, measureKey, "foreground");
     }
-
 
     /**
     * Method to set the most important size variables of. A good one this is ...

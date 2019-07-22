@@ -37,6 +37,9 @@ import { createLinearColorScale, LinearColorScale, ColorHelper } from "powerbi-v
 
 import TextMeasurementService = textMeasurementService.textMeasurementService;
 
+import DataViewObjects = powerbi.DataViewObjects;
+import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
+
 import {
     ChartData,
     DataPoint,
@@ -167,10 +170,6 @@ export function getRangePoints(minValue: number, maxValue: number, numSteps: num
     }
     return result
 }
-
-
-
-
 
 // function computeDimensions(selection) {
 //     var dimensions = null;
