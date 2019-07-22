@@ -280,12 +280,13 @@ export class ViEvac_PolarChart implements IVisual {
                     value: dataView.categorical.values[0].values[0]
                 });
 
-                // we do strange things for selections ...
+                // we do strange things for selections. A datapoint is identified by all values.
+                // However we need to see how to use this ...
                 let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
 
                 let identity: any = selectionIdBuilder
-                    // .withCategory(dataView.categorical.categories[0], index)
-                    // .withMeasure(groupArray.source.queryName)
+                    .withCategory(dataView.categorical.categories[0], index)
+                    .withMeasure(groupArray.source.queryName)
                     .withSeries(dataView.categorical.values, dataView.categorical.values[groupIdx])
                     .createSelectionId();
 
@@ -294,15 +295,16 @@ export class ViEvac_PolarChart implements IVisual {
                 let value = groupArray.values[index];
                 let subCategory = (dataView.categorical.categories.length == 2) ? dataView.categorical.categories[1].values[index].toString() : ""
                 let valueName = groupArray.source.displayName
-                let name = <string>groupArray.source.groupName.toString()
 
                 // colors are difficult. We use some helpers and things ...
-                let initialColor = this.colorPalette.getColor(name).value;
+                let initialColor = this.colorPalette.getColor(<string>groupArray.source.groupName.toString()).value;
+
+                console.log(dataView.metadata.objects)
                 let parsedColor: string = this.getColor(
                     ViEvac_PolarChart.GroupPropertyIdentifier,
                     initialColor,
                     dataView.metadata.objects,
-                    name
+                    groupArray.source.groupName + "-" + category
                 );
 
                 tempDataPoints.push({
@@ -1103,6 +1105,7 @@ export class ViEvac_PolarChart implements IVisual {
             this.enumerateColors(this.chartData.groups, instanceEnumeration);
         }
 
+        // return (instanceEnumeration as VisualObjectInstanceEnumerationObject).instances || [];
         return instanceEnumeration || [];
     }
 
@@ -1126,7 +1129,8 @@ export class ViEvac_PolarChart implements IVisual {
                 this.addAnInstanceToEnumeration(instanceEnumeration, {
                     displayName,
                     objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
-                    selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
+                    // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
+                    selector: group.groupId,
                     properties: {
                         fill: { solid: { color: group.color } }
                     }
@@ -1170,7 +1174,7 @@ export class ViEvac_PolarChart implements IVisual {
             defaultColor
         );
 
-        return colorHelper.getColorForMeasure(objects, measureKey, "foreground");
+        return colorHelper.getColorForSeriesValue(objects, measureKey, "foreground");
     }
 
     /**
