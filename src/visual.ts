@@ -374,17 +374,20 @@ export class ViEvac_PolarChart implements IVisual {
 
                 // doing tooltips (hard work again - why do we do it in this veeery general way?) ...
                 let tooltipArray = []
-                thePoint.category.forEach(category => {
+                thePoint.category.forEach((category, idx) => {
                     tooltipArray.push(
                         {
-                            displayName: "Category", // TBD: REMOVE BY REAL MEASURE NAME ...
+                            displayName: <string>dataView.categorical.categories[idx].source.displayName,
                             value: (category || "").toString()
                         }
                     )
                 })
 
+                let grpIdx = dataView.metadata.columns.map(v => v.roles).findIndex(role => {
+                    return ("Groups" in role)
+                })
                 tooltipArray.push({
-                    displayName: "Group", // TBD: REMOVE BY REAL MEASURE NAME
+                    displayName: (dataView.metadata.columns[grpIdx].displayName || "Group"),
                     value: (thePoint.group || "").toString()
                     // color: "" TBD: ADD COLOR ...
                 })
@@ -400,6 +403,7 @@ export class ViEvac_PolarChart implements IVisual {
 
                 // replace the Values and push the dataPoint - and we're done here (hard work it was ...)
                 thePoint.values = uValues
+                thePoint.tooltipInfo = tooltipArray
                 dataPoints.push(thePoint);
             })
         })
@@ -797,7 +801,9 @@ export class ViEvac_PolarChart implements IVisual {
             // ---------------------------------------------------------------------------------
 
             // we do need a scale for size and for color ...
-            let impactScale = this.getImpactScale(chartData, this.settings)
+            if (settings.impact.show) {
+                var impactScale = this.getImpactScale(chartData, this.settings)
+            }
             if (settings.preparedness.show) {
                 var preparednessScale = this.getPreparednessScale(chartData, this.settings)
             }
@@ -821,6 +827,8 @@ export class ViEvac_PolarChart implements IVisual {
                 dataCircleR = radarHalfR * maxDataFieldAngle / 2 * Math.PI / 180 -
                     this.settings.impact.minPointRadius
             }
+
+
 
             // we start with lines (and later do circles) ...
             // FIX THAT 0 ...
@@ -889,7 +897,7 @@ export class ViEvac_PolarChart implements IVisual {
             let dataPointSettings = this.settings.dataBasics
 
             // cirles or no circles - that is here the question! (more than 7 groups also leads to circles) ...
-            if (settings.groups.useSymbols || chartData.groups.length > 7) {
+            if (settings.groups.useSymbols && chartData.groups.length <= 7) {
                 // symbols it is. We generate them and do the plotting ...
                 let dataCirclesEntered = dataCirclesData
                     .enter()
@@ -975,10 +983,11 @@ export class ViEvac_PolarChart implements IVisual {
                     })
                     .attr("class", function (d) {
                         // add classes: a generic one, and one for segment and ring each ...
-                        let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category.toString().replace(/\s/g, '-')
+                        let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category[0] // FIX THAT AND MATCH WITH OTHERS
                         let clsRing: string = ViEvac_PolarChart.ClsDataRing
+
                         clsRing = clsRing + bgSegments.map(s => s.innerRadius).sort((a, b) => { return b - a }).find(function (innerRadius) {
-                            return innerRadius < dataScale(Number(d.values[0].measureValue))
+                            return innerRadius <= (dataScale(Number(d.values[0].measureValue)) + Math.ceil(Number(settings.categoryAxis.strokeWidth) / 2))
                         }).toString().replace(/\s/g, '-')
 
                         return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
@@ -999,6 +1008,8 @@ export class ViEvac_PolarChart implements IVisual {
 
             // we want tooltips ...
             this.tooltipServiceWrapper.addTooltip(dataCirclesMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
+                console.log("TP", tooltipEvent)
+
                 return tooltipEvent.data.tooltipInfo;
             });
 
@@ -1015,13 +1026,10 @@ export class ViEvac_PolarChart implements IVisual {
      * necessary stuff it also checks for values not set and enters default stuff.
      * @param dataView 
      */
-
     private static parseSettings(dataView: DataView): Settings {
         let settings: Settings = Settings.parse(dataView) as Settings;
 
         // we care about the maximum number of data steps ...
-        settings.dataAxis.steps = Math.min(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMaxLimit)
-        settings.dataAxis.steps = Math.max(settings.dataAxis.steps, ViEvac_PolarChart.DataStepMinLimit)
         settings.innerCircle.innerOffset = Math.max(settings.innerCircle.innerOffset, 0)
 
         // we do some stuff to make sure the colorbrewing works for us ...
@@ -1056,6 +1064,11 @@ export class ViEvac_PolarChart implements IVisual {
             settings.impact.buckets = Math.max(settings.impact.buckets, ViEvac_PolarChart.BucketCountMinLimit)
             settings.impact.buckets = Math.min(settings.impact.buckets, ViEvac_PolarChart.BucketCountMaxLimit)
         }
+
+        // and we care for those settings that depend on measures ...
+        let nMeasures = dataView.categorical.values.length / dataView.categorical.categories.length
+        if (nMeasures < 3) { settings.preparedness.show = false }
+        if (nMeasures < 2) { settings.impact.show = false }
 
         return settings
     }
