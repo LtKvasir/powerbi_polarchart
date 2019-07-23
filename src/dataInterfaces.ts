@@ -55,7 +55,7 @@ export interface Measure {
 
 export interface ChartData {
     dataPoints: DataPoint[];
-    categories: string[];
+    categories: string[][];
     uniqueCategories: string[]
     groups: string[];
     categoryValueFormatter: IValueFormatter;

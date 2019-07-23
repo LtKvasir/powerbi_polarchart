@@ -290,13 +290,22 @@ export class ViEvac_PolarChart implements IVisual {
                 //     .withSeries(dataView.categorical.values, dataView.categorical.values[groupIdx])
                 //     .createSelectionId();
 
-                // now - more interesting - get the group and values. Let's push 'em to data points ...
 
+                // now - more interesting - get the group and values. Let's push 'em to data points ...
                 // first get the categories array by looping through 'em ...
                 let category: string[] = []
                 dataView.categorical.categories.forEach(v => {
                     category.push(v.values[index].toString())
                 })
+
+                // colors are difficult. We use some helpers and things ...
+                let initialColor = this.colorPalette.getColor(<string>groupArray.source.groupName).value;
+                // let parsedColor: string = this.getColor(
+                //     ViEvac_PolarChart.GroupPropertyIdentifier,
+                //     initialColor,
+                //     dataView.metadata.objects,
+                //     name
+                // );
 
                 // now we assemble the temporary array. We do use the dataPoint interface for convenience issues 
                 // and fill not used thingies with empties ...
@@ -304,11 +313,11 @@ export class ViEvac_PolarChart implements IVisual {
                     category: category,
                     uniqueCategory: category.join('-'),
                     group: <string>groupArray.source.groupName,
-                    values: new Array<Measure>({
+                    values: [{
                         measureName: <string>groupArray.source.displayName,
                         measureValue: <string>groupArray.values[index]
-                    }),
-                    color: "",
+                    }],
+                    color: initialColor,
                     identity: "",
                     selected: false
                 })
@@ -326,119 +335,85 @@ export class ViEvac_PolarChart implements IVisual {
         var uniqueCategories = tempDataPoints.map(v => v.uniqueCategory).filter((value, index, self) => {
             return self.indexOf(value) === index;
         })
+        uniqueCategories.sort()
+        // uniqueCategories.sort().reverse() // TBD: ENABLE SORT DIRECTION IN SETTINGS ...
+
+        var categories = []
+        for (let idx = 0; idx < tempDataPoints[0].category.length; idx++) {
+            categories.push(
+                tempDataPoints.map(v => v.category[idx]).filter((value, index, self) => {
+                    return self.indexOf(value) === index;
+                })
+            )
+        }
 
         // loop 'em ... do it ... do it ... do it ...
-        // (ok well - i'll explain) we do loop the unique categoryfields & group fields and merge values ...
-
-        // TBD HERE !
-        uniqueGroupFields.forEach((uniqueField) => {
-            // so these are the unique Fields ...
-            let measureNames: powerbi.PrimitiveValue[] = [];
-            let measureValues: powerbi.PrimitiveValue[] = [];
-
-
-            // tempDataPoints = tempDataPoints.sort(function (a, b) {
-            //     // we sort the dataPoints by the Y group values
-            //     var CatA = a.uniqueFieldID.toString().toUpperCase();
-            //     var CatB = b.uniqueFieldID.toString().toUpperCase();
-            //     return CatA < CatB ? -1 : CatA > CatB ? 1 : 0;
-            // })
-
-
-            // let value = groupArray.values[index];
-            // let valueName = groupArray.source.displayName
-            // let name = <string>groupArray.source.groupName.toString()
-
-            // // colors are difficult. We use some helpers and things ...
-            // let initialColor = this.colorPalette.getColor(name).value;
-            // let parsedColor: string = this.getColor(
-            //     ViEvac_PolarChart.GroupPropertyIdentifier,
-            //     initialColor,
-            //     dataView.metadata.objects,
-            //     name
-            // );
-
-            tempDataPoints.filter(function (dPoint) {
-                // this filters all datapoints for the unique field ...
-                return dPoint.uniqueGroupFieldID == uniqueField
-            }).forEach((field, i) => {
-                // and this now gives us each datapoint for the uField. We extract their data we do ...
-                measureNames.push(field.valueName)
-                measureValues.push(field.value)
-
-                // overwrite colors in case ... (TBD: REMOVE)
-                let groupNames = groups.map(v => v.group)
-                if (this.settings.groups.colors) {
-                    if (groupNames.indexOf(field.group.group) == 0) {
-                        field.group.color = this.settings.groups.group1color
-                    } else if (groupNames.indexOf(field.group.group) == 1) {
-                        field.group.color = this.settings.groups.group2color
-                    }
-                }
+        uniqueCategories.forEach((uCat) => {
+            // get all the data points in one unique category ...
+            let uCatDPoints = tempDataPoints.filter(function (dPoint) {
+                return dPoint.uniqueCategory == uCat
             })
 
-            // so we are still at the fields and now can push dataPoints. First to measures go to value (radial) and
-            // impact (size). Third is prepardness (Color). Fourth is description. All others are just for tooltips (this is just how our Visual works)
-            let thePoint = tempDataPoints.find((thePoint) => { return thePoint.uniqueGroupFieldID == uniqueField })
-
-            // doing tooltips first (hard work again - why do we do it in this veeery general way?) ...
-            let tooltipArray = [{
-                displayName: "Category",
-                value: (thePoint.category || "").toString(),
-            },
-            {
-                displayName: "Group",
-                value: (thePoint.group.group || "").toString(),
-                color: (this.settings.preparedness.show) ? "" : (thePoint.group.color || "").toString()
-            }]
-
-            if (dataView.categorical.categories.length == 2) {
-                tooltipArray.push({
-                    displayName: "Field",
-                    value: (thePoint.subCategory || "").toString()
+            uCatDPoints.map(v => v.group).filter((value, index, self) => {
+                return self.indexOf(value) === index;
+            }).forEach(group => {
+                // cycling through all groups there are within this unique category ...
+                // We now need to get each (temporary) dataPoint and merge them to one ...
+                // first we need to get all values (which are in the different temporary dataPoints) ...
+                let uValues: Measure[] = []
+                uCatDPoints.filter(function (dPoint) {
+                    return dPoint.group == group
+                }).forEach((dPoint, i) => {
+                    dPoint.values.forEach(v => { uValues.push(v) })
                 })
-            }
 
-            measureNames.forEach((measure, idx) => {
-                tooltipArray.push({
-                    displayName: measure.toString(),
-                    value: (measureValues[idx] || "").toString()
+                // next we extract the data that is common for each of the data in one unique category and group ...
+                let thePoint: DataPoint = uCatDPoints.find(dPoint => {
+                    return dPoint.group == group
                 })
+
+                // doing tooltips (hard work again - why do we do it in this veeery general way?) ...
+                let tooltipArray = []
+                thePoint.category.forEach(category => {
+                    tooltipArray.push(
+                        {
+                            displayName: "Category", // TBD: REMOVE BY REAL MEASURE NAME ...
+                            value: (category || "").toString()
+                        }
+                    )
+                })
+
+                tooltipArray.push({
+                    displayName: "Group", // TBD: REMOVE BY REAL MEASURE NAME
+                    value: (thePoint.group || "").toString()
+                    // color: "" TBD: ADD COLOR ...
+                })
+
+                uValues.forEach(v => {
+                    tooltipArray.push(
+                        {
+                            displayName: v.measureName,
+                            value: (v.measureValue || "").toString()
+                        }
+                    )
+                })
+
+                // replace the Values and push the dataPoint - and we're done here (hard work it was ...)
+                thePoint.values = uValues
+                dataPoints.push(thePoint);
             })
-
-            // and the data - here it goes ... (what hard work that was - 2 hours of my life ...)
-            dataPoints.push({
-                group: thePoint.group,
-                category: thePoint.category,
-                subCategory: thePoint.subCategory,
-                uniqueFieldID: thePoint.uniqueFieldID,
-                uniqueGroupFieldID: thePoint.uniqueGroupFieldID,
-                valueName: measureNames[0],
-                value: measureValues[0],
-                impactName: (measureNames.length > 1) ? measureNames[1] : "",
-                impactValue: (measureNames.length > 1) ? measureValues[1] : "",
-                preparednessName: (measureNames.length > 2) ? measureNames[2] : "",
-                preparednessValue: (measureNames.length > 2) ? measureValues[2] : "",
-                description: (measureNames.length > 3) ? measureValues[3] : "",
-                valueStr: thePoint.valueStr,
-                tooltipInfo: tooltipArray,
-                identity: thePoint.identity,
-                selected: thePoint.selected
-            });
         })
 
         // and return it we do ...
         return <ChartData>{
             dataPoints: dataPoints,
+            uniqueCategories: uniqueCategories,
             categories: categories,
-            categoryFields: categoryFields,
-            uniqueFields: uniqueFields,
             groups: groups,
             valueFormatter: valueFormatter,
             categoryValueFormatter: categoryValueFormatter
         }
     }
-
 
     /**
      * Constructs the visual at the veeeeeeeeeeeeeeeeery basic level.
@@ -502,7 +477,7 @@ export class ViEvac_PolarChart implements IVisual {
             // also prepare some necessary variables for further use ...
             let angleOffSet = this.settings.categoryAxis.angleOffSet
             let dataPointAngle = 360 / chartData.dataPoints.length
-            let datafieldAngle = 360 / chartData.uniqueFields.length
+            let datafieldAngle = 360 / chartData.uniqueCategories.length
             let DataAxisMinValue = this.settings.dataAxis.minValue
             let DataAxisMaxValue = this.settings.dataAxis.maxValue
             let steps = this.settings.dataAxis.steps
@@ -513,30 +488,31 @@ export class ViEvac_PolarChart implements IVisual {
             // we need to set min and max values if needed ...
             if (chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
                 DataAxisMinValue = d3.min(chartData.dataPoints, function (d: DataPoint) {
-                    return d.value as number;
+                    return Number(d.values[0].measureValue);
                 });
                 DataAxisMaxValue = d3.max(chartData.dataPoints, function (d: DataPoint) {
-                    return d.value as number;
+                    return Number(d.values[0].measureValue);;
                 });
             }
 
             // scales ...
             var dataScale = this.getDataScale(chartData)
             var fieldScale = d3.scaleBand()
-                .domain(chartData.uniqueFields)
+                .domain(chartData.uniqueCategories)
                 .range([angleOffSet, angleOffSet + 360]);
 
             // and a few data related variables ...
-            let categorySizes = chartData.categories.map(value => {
-                let lastIdx = (chartData.dataPoints.map(v => v.category).lastIndexOf(value))
-                let firstIdx = (chartData.dataPoints.map(v => v.category).indexOf(value))
+            // TBD: FIX THAT 0 ...
+            let categorySizes = chartData.categories[0].map(value => {
+                let lastIdx = (chartData.dataPoints.map(v => v.category[0]).lastIndexOf(value))
+                let firstIdx = (chartData.dataPoints.map(v => v.category[0]).indexOf(value))
                 return {
                     category: value,
                     size: (lastIdx - firstIdx + 1),
                     startIndex: firstIdx,
                     lastIndex: lastIdx,
-                    startAngle: (fieldScale(chartData.dataPoints[firstIdx].uniqueFieldID) + 90) * Math.PI / 180,
-                    endAngle: (fieldScale(chartData.dataPoints[lastIdx].uniqueFieldID) + 90) * Math.PI / 180
+                    startAngle: (fieldScale(chartData.dataPoints[firstIdx].uniqueCategory) + 90) * Math.PI / 180,
+                    endAngle: (fieldScale(chartData.dataPoints[lastIdx].uniqueCategory) + 90) * Math.PI / 180
                 }
             })
 
@@ -710,7 +686,7 @@ export class ViEvac_PolarChart implements IVisual {
             // ---------------------------------------------------------------------------------
             if (this.settings.categoryAxisLabels) {
                 // we do need to distinguish if we have a two-dimensional category set or only one category
-                if (chartData.categoryFields.length == 0 || chartData.categories.length == 1) {
+                if (chartData.uniqueCategories.length == 0 || chartData.categories.length == 1) {
                 } else {
                     // we have two dimensional data which means we will place arcs outside the circle to add labels
                     // We start by defining arcs for the text paths ...
@@ -846,22 +822,28 @@ export class ViEvac_PolarChart implements IVisual {
                     this.settings.impact.minPointRadius
             }
 
-
             // we start with lines (and later do circles) ...
+            // FIX THAT 0 ...
             var lineData: FieldLine[] = []
             if (settings.groups.showLines) {
                 // data for the lines: we cycle all fields and extract the points for this field ...
-                chartData.categoryFields.forEach(field => {
-                    let fieldData = chartData.dataPoints.filter(dataPoint => dataPoint.subCategory == field)
+                chartData.uniqueCategories.forEach(field => {
+                    let fieldData = chartData.dataPoints.filter(dataPoint => dataPoint.uniqueCategory == field)
 
                     // now get the data with max and min value (distance to center) ...
-                    let maxFieldData = _.maxBy(fieldData, 'value')
+                    let maxFieldData = _.maxBy(fieldData, data => {
+                        return Number(data.values[0].measureValue)
+                    })
+
+                    let minFieldData = _.minBy(fieldData, data => {
+                        return Number(data.values[0].measureValue)
+                    })
 
                     lineData.push({
-                        minValue: _.minBy(fieldData, 'value').value,
-                        maxValue: maxFieldData.value,
-                        colorGroup: maxFieldData.group.color,
-                        fieldID: maxFieldData.uniqueFieldID
+                        minValue: minFieldData.values[0].measureValue,
+                        maxValue: maxFieldData.values[0].measureValue,
+                        colorGroup: maxFieldData.color,
+                        fieldID: maxFieldData.uniqueCategory
                     })
                 })
 
@@ -891,6 +873,7 @@ export class ViEvac_PolarChart implements IVisual {
                     .style('stroke', function (d, i) {
                         // either std. color (preparedness) or groups
                         return (settings.preparedness.show) ? settings.dataBasics.stroke : d.colorGroup.toString()
+                        // either preparedness or groups (or none)
                     })
                     .attr("class", function (d) {
                         return ViEvac_PolarChart.ClsGroupLines + " " + ViEvac_PolarChart.ClsGroupLines + "_" + d.fieldID
@@ -918,16 +901,16 @@ export class ViEvac_PolarChart implements IVisual {
                 // now we simply draw our data points (as easy as that) ...
                 dataCirclesMerged
                     .attr('transform', function (d, i) {
-                        let transX = getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle / 2).x
-                        let transY = getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle / 2).y
+                        let transX = getCartFromPolar(dataScale(Number(d.values[0].measureValue)), fieldScale(d.uniqueCategory), datafieldAngle / 2).x
+                        let transY = getCartFromPolar(dataScale(Number(d.values[0].measureValue)), fieldScale(d.uniqueCategory), datafieldAngle / 2).y
                         return 'translate(' + transX + ', ' + transY + ')';
                     })
                     .attr('d', function (d) {
                         // here is magic. We need to know which group it is (get an index) and then
                         // call a symbolgenerator. However the type needs to be a symbol -> thus we call "d3"
                         // also size is radius squared by definition of symbols ...
-                        let groupIdx = chartData.groups.map(v => v.group).indexOf(d.group.group)
-                        let size = (settings.impact.show) ? dataCircleR * impactScale(d.impactValue) + settings.impact.minPointRadius : dataCircleR
+                        let groupIdx = chartData.groups.indexOf(d.group)
+                        let size = (settings.impact.show) ? dataCircleR * impactScale(d.values[1].measureValue) + settings.impact.minPointRadius : dataCircleR
                         symbolGenerator
                             .type(d3[ViEvac_PolarChart.d3Symbols[groupIdx]])
                             .size(ViEvac_PolarChart.symbolCorrectionFactor * Math.pow(size, 2))
@@ -935,13 +918,13 @@ export class ViEvac_PolarChart implements IVisual {
                     })
                     .attr('fill', function (d, i) {
                         // either preparedness or groups (or none)
-                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.preparednessValue) : d.group.color.toString()
+                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
                         return (dataPointSettings.fillArea) ? color : "None"
                     })
                     .style('stroke-width', this.settings.dataBasics.strokeWidth)
                     .style('stroke', function (d, i) {
                         // either preparedness or groups (or none)
-                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.preparednessValue) : d.group.color.toString()
+                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
                         return (dataPointSettings.fillArea) ? dataPointSettings.stroke : color
                     })
                     .attr("class", function (d) {
@@ -949,7 +932,7 @@ export class ViEvac_PolarChart implements IVisual {
                         let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category.toString().replace(/\s/g, '-')
                         let clsRing: string = ViEvac_PolarChart.ClsDataRing
                         clsRing = clsRing + bgSegments.map(s => s.innerRadius).sort((a, b) => { return b - a }).find(function (innerRadius) {
-                            return innerRadius < dataScale(Number(d.value))
+                            return innerRadius < dataScale(Number(d.values[0].measureValue))
                         }).toString().replace(/\s/g, '-')
 
                         return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
@@ -967,27 +950,27 @@ export class ViEvac_PolarChart implements IVisual {
 
                 dataCirclesMerged
                     .attr(ViEvac_PolarChart.AttrCX, function (d, i) {
-                        return getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle / 2).x
+                        return getCartFromPolar(dataScale(Number(d.values[0].measureValue)), fieldScale(d.uniqueCategory), datafieldAngle / 2).x
                     })
                     .attr(ViEvac_PolarChart.AttrCY, function (d, i) {
-                        return getCartFromPolar(dataScale(Number(d.value)), fieldScale(d.uniqueFieldID), datafieldAngle / 2).y
+                        return getCartFromPolar(dataScale(Number(d.values[0].measureValue)), fieldScale(d.uniqueCategory), datafieldAngle / 2).y
                     })
                     .attr(ViEvac_PolarChart.AttrRadius, function (d) {
                         if (settings.impact.show) {
-                            return dataCircleR * impactScale(d.impactValue) + settings.impact.minPointRadius
+                            return dataCircleR * impactScale(d.values[1].measureValue) + settings.impact.minPointRadius
                         }
                         // we no fill do not ...
                         return dataCircleR
                     })
                     .attr('fill', function (d, i) {
                         // either preparedness or groups (or none)
-                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.preparednessValue) : d.group.color.toString()
+                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
                         return (dataPointSettings.fillArea) ? color : "None"
                     })
                     .style('stroke-width', this.settings.dataBasics.strokeWidth)
                     .style('stroke', function (d, i) {
                         // either preparedness or groups (or none)
-                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.preparednessValue) : d.group.color.toString()
+                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
                         return (dataPointSettings.fillArea) ? dataPointSettings.stroke : color
                     })
                     .attr("class", function (d) {
@@ -995,7 +978,7 @@ export class ViEvac_PolarChart implements IVisual {
                         let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category.toString().replace(/\s/g, '-')
                         let clsRing: string = ViEvac_PolarChart.ClsDataRing
                         clsRing = clsRing + bgSegments.map(s => s.innerRadius).sort((a, b) => { return b - a }).find(function (innerRadius) {
-                            return innerRadius < dataScale(Number(d.value))
+                            return innerRadius < dataScale(Number(d.values[0].measureValue))
                         }).toString().replace(/\s/g, '-')
 
                         return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
@@ -1089,9 +1072,9 @@ export class ViEvac_PolarChart implements IVisual {
         const instanceEnumeration: VisualObjectInstanceEnumeration =
             Settings.enumerateObjectInstances(settings, options);
 
-        if (options.objectName === ViEvac_PolarChart.GroupPropertyIdentifier.objectName) {
-            this.enumerateColors(this.chartData.groups, instanceEnumeration);
-        }
+        // if (options.objectName === ViEvac_PolarChart.GroupPropertyIdentifier.objectName) {
+        //     this.enumerateColors(this.chartData.groups, instanceEnumeration);
+        // }
 
         // return (instanceEnumeration as VisualObjectInstanceEnumerationObject).instances || [];
         return instanceEnumeration || [];
@@ -1102,33 +1085,33 @@ export class ViEvac_PolarChart implements IVisual {
      * @param groups 
      * @param instanceEnumeration 
      */
-    private enumerateColors(groups: Group[], instanceEnumeration: VisualObjectInstanceEnumeration): void {
-        if (groups && groups.length > 0) {
-            // if there is more than one group we iterate it ...
-            groups.forEach((group: Group) => {
-                // for the properties (Settings) we need a display name and the identity (bc. it is dynamically to be identified)
-                const displayName: string = group.group.toString();
-                const identity: ISelectionId = group.identity as ISelectionId;
+    // private enumerateColors(groups: string[], instanceEnumeration: VisualObjectInstanceEnumeration): void {
+    //     if (groups && groups.length > 0) {
+    //         // if there is more than one group we iterate it ...
+    //         groups.forEach((group) => {
+    //             // for the properties (Settings) we need a display name and the identity (bc. it is dynamically to be identified)
+    //             const displayName: string = group.toString();
+    //             const identity: ISelectionId = group.identity as ISelectionId;
 
-                console.log("GROUP-KEY", identity.getKey())
-                console.log("NORMAL", ColorHelper.normalizeSelector(identity.getSelector(), false))
-                // debugger;
+    //             console.log("GROUP-KEY", identity.getKey())
+    //             console.log("NORMAL", ColorHelper.normalizeSelector(identity.getSelector(), false))
+    //             // debugger;
 
-                this.addAnInstanceToEnumeration(instanceEnumeration, {
-                    displayName,
-                    objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
-                    // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
-                    selector: group.groupId,
-                    properties: {
-                        fill: { solid: { color: group.color } }
-                    }
-                });
-            });
+    //             this.addAnInstanceToEnumeration(instanceEnumeration, {
+    //                 displayName,
+    //                 objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
+    //                 // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
+    //                 selector: group.groupId,
+    //                 properties: {
+    //                     fill: { solid: { color: group.color } }
+    //                 }
+    //             });
+    //         });
 
-            console.log("INSTANCE", instanceEnumeration)
+    //         console.log("INSTANCE", instanceEnumeration)
 
-        }
-    }
+    //     }
+    // }
 
     /**
      * Adds an instance to the property enumeration
@@ -1206,10 +1189,10 @@ export class ViEvac_PolarChart implements IVisual {
         // we first need to set min and max values for the axis ...
         if (chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
             inputMin = d3.min(chartData.dataPoints, function (d: DataPoint) {
-                return d.value as number;
+                return Number(d.values[0].measureValue);
             });
             inputMax = d3.max(chartData.dataPoints, function (d: DataPoint) {
-                return d.value as number;
+                return Number(d.values[0].measureValue);
             });
         }
 
@@ -1243,10 +1226,10 @@ export class ViEvac_PolarChart implements IVisual {
         // we first set the input to the data intervall ..
         if (chartData.dataPoints) {
             inputMin = d3.min(chartData.dataPoints, function (d: DataPoint) {
-                return d.impactValue as number;
+                return Number(d.values[1].measureValue);
             });
             inputMax = d3.max(chartData.dataPoints, function (d: DataPoint) {
-                return d.impactValue as number;
+                return Number(d.values[1].measureValue);
             });
         }
 
@@ -1285,10 +1268,10 @@ export class ViEvac_PolarChart implements IVisual {
         // we first set the input to the data intervall ..
         if (chartData.dataPoints) {
             inputMin = d3.min(chartData.dataPoints, function (d: DataPoint) {
-                return d.preparednessValue as number;
+                return Number(d.values[2].measureValue);
             });
             inputMax = d3.max(chartData.dataPoints, function (d: DataPoint) {
-                return d.preparednessValue as number;
+                return Number(d.values[2].measureValue);
             });
         }
 
@@ -1333,7 +1316,7 @@ export class ViEvac_PolarChart implements IVisual {
         // if the legend is turned off, we return 0
         if (!this.settings.legend.show) { return 0 }
 
-        let text: powerbi.PrimitiveValue = _.maxBy([chartData.dataPoints[0].impactName, chartData.dataPoints[0].impactName], "length") || "";
+        let text: powerbi.PrimitiveValue = _.maxBy([chartData.dataPoints[0].values[0].measureName, chartData.dataPoints[0].values[0].measureName], "length") || "";
 
 
         // now we need four things: legend Text height (2 times), dataPoint size and offset
@@ -1345,7 +1328,7 @@ export class ViEvac_PolarChart implements IVisual {
 
         // we do need to do this the hard way to avoid a loop in the logic (sizing the radar by the size of points that are sized by the radar)
         // to avoid this we assume maximum size possible (which costs us space ...) at least in dynamic mode ...
-        let dataFieldAngle = Math.max(360 / chartData.uniqueFields.length, ViEvac_PolarChart.maxDataFieldAngle)
+        let dataFieldAngle = Math.max(360 / chartData.uniqueCategories.length, ViEvac_PolarChart.maxDataFieldAngle)
         let dataCircleR = this.chartSizes.radarR / 2 * dataFieldAngle / 2 * Math.PI / 180 -
             this.settings.impact.minPointRadius
 
