@@ -40,6 +40,8 @@ import TextMeasurementService = textMeasurementService.textMeasurementService;
 import DataViewObjects = powerbi.DataViewObjects;
 import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
 
+import ISelectionId = powerbi.extensibility.ISelectionId;
+
 import {
     ChartData,
     DataPoint,
@@ -54,6 +56,10 @@ import {
     colorbrewer
 } from "./settings";
 import { color } from "d3";
+import { ViEvac_PolarChart } from "./visual";
+
+type Selection<T> = d3.Selection<any, T, any, any>;
+
 
 /**
  * Gets the height of a text field to calculate space needed for axis ...
@@ -169,6 +175,47 @@ export function getRangePoints(minValue: number, maxValue: number, numSteps: num
         result.push(minValue + i * delta)
     }
     return result
+}
+
+export function syncSelectionState(
+    selection: Selection<DataPoint>,
+    selectionIds: ISelectionId[]
+): void {
+    //     if (!selection || !selectionIds) {
+    //         return;
+    //     }
+
+    //     if (!selectionIds.length) {
+    //         selection.style({
+    //             "fill-opacity": null,
+    //             "stroke-opacity": null,
+    //         });
+
+    //         return;
+    //     }
+
+    //     const self: this = this;
+
+    //     selection.each(function (barDataPoint: BarChartDataPoint) {
+    //         const isSelected: boolean = self.isSelectionIdInArray(selectionIds, barDataPoint.selectionId);
+
+    //         const opacity: number = isSelected
+    //             ? BarChart.Config.solidOpacity
+    //             : BarChart.Config.transparentOpacity;
+
+    //         d3.select(this).style({
+    //             "fill-opacity": opacity,
+    //             "stroke-opacity": opacity,
+    //         });
+    //     });
+}
+
+export function isSelectionIdInArray(selectionIds: ISelectionId[], selectionId: ISelectionId): boolean {
+    if (!selectionIds || !selectionId) {
+        return false;
+    }
+
+    return selectionIds.indexOf(selectionId) >= 0;
 }
 
 // function computeDimensions(selection) {

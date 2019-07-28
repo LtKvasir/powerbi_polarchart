@@ -48,6 +48,7 @@ import DataViewObjects = powerbi.DataViewObjects;
 import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
 
 import ISelectionIdBuilder = powerbi.visuals.ISelectionIdBuilder;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import ISelectionId = powerbi.visuals.ISelectionId;
 
 
@@ -94,7 +95,9 @@ import {
     getCartFromPolar,
     getTextSize,
     getColorScale,
-    getRangePoints
+    getRangePoints,
+    isSelectionIdInArray,
+    syncSelectionState
 } from "./utilities";
 import { text } from "d3";
 import { numberFormat } from "powerbi-visuals-utils-formattingutils/lib/src/formattingService/formattingService";
@@ -122,6 +125,9 @@ export class ViEvac_PolarChart implements IVisual {
 
     private tooltipServiceWrapper: ITooltipServiceWrapper;
     private selectionIdBuilder: ISelectionIdBuilder;
+    private selectionManager: ISelectionManager;
+    private dataSelection: Selection<DataPoint>;
+
 
 
     // ----------------------------- BASIC SETTINGS --------------------------------------
@@ -154,6 +160,9 @@ export class ViEvac_PolarChart implements IVisual {
 
     private CategoryLabelOffset: number = 5;
     private LegendLabelOffset: number = 2;
+
+    private static SelectOpacity: number = 1.0;
+    private static DeSelectOpacity: number = 0.2;
 
     // ----------------------------- FOR PROPERTY PANE -----------------------------------
     private static GroupPropertyIdentifier: DataViewObjectPropertyIdentifier = {
@@ -282,13 +291,12 @@ export class ViEvac_PolarChart implements IVisual {
                 });
 
                 // we do strange things for selections ...
-                // let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
+                let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
 
-                // let identity: any = selectionIdBuilder
-                //     // .withCategory(dataView.categorical.categories[0], index)
-                //     // .withMeasure(groupArray.source.queryName)
-                //     .withSeries(dataView.categorical.values, dataView.categorical.values[groupIdx])
-                //     .createSelectionId();
+                let identity: any = selectionIdBuilder
+                    .withCategory(dataView.categorical.categories[0], index)
+                    .withSeries(dataView.categorical.values, dataView.categorical.values[groupIdx])
+                    .createSelectionId();
 
 
                 // now - more interesting - get the group and values. Let's push 'em to data points ...
@@ -318,7 +326,7 @@ export class ViEvac_PolarChart implements IVisual {
                         measureValue: <string>groupArray.values[index]
                     }],
                     color: initialColor,
-                    identity: "",
+                    identity: identity,
                     selected: false
                 })
             });
@@ -473,50 +481,53 @@ export class ViEvac_PolarChart implements IVisual {
             // get our data (kinda important) ...
             let dataView: DataView = this.dataView = options.dataViews[0];
             this.chartData = this.converter(dataView);
-            let chartData = this.chartData
+
+            // do selection things ...
+            this.selectionManager = this.host.createSelectionManager();
+            
 
             // set size variables within the class for further use  ...
-            this.setChartSizes(options.viewport, chartData)
+            this.setChartSizes(options.viewport, this.chartData)
 
             // also prepare some necessary variables for further use ...
             let angleOffSet = this.settings.categoryAxis.angleOffSet
-            let dataPointAngle = 360 / chartData.dataPoints.length
-            let datafieldAngle = 360 / chartData.uniqueCategories.length
+            let dataPointAngle = 360 / this.chartData.dataPoints.length
+            let datafieldAngle = 360 / this.chartData.uniqueCategories.length
             let DataAxisMinValue = this.settings.dataAxis.minValue
             let DataAxisMaxValue = this.settings.dataAxis.maxValue
             let steps = this.settings.dataAxis.steps
 
-            var settings = this.settings
-
+            // we need "this" stored so we can access it in callbacks ...
+            let self = this
 
             // we need to set min and max values if needed ...
-            if (chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
-                DataAxisMinValue = d3.min(chartData.dataPoints, function (d: DataPoint) {
+            if (this.chartData.dataPoints && !(this.settings.dataAxis.maxValue > this.settings.dataAxis.minValue)) {
+                DataAxisMinValue = d3.min(this.chartData.dataPoints, function (d: DataPoint) {
                     return Number(d.values[0].measureValue);
                 });
-                DataAxisMaxValue = d3.max(chartData.dataPoints, function (d: DataPoint) {
+                DataAxisMaxValue = d3.max(this.chartData.dataPoints, function (d: DataPoint) {
                     return Number(d.values[0].measureValue);;
                 });
             }
 
             // scales ...
-            var dataScale = this.getDataScale(chartData)
+            var dataScale = this.getDataScale(this.chartData)
             var fieldScale = d3.scaleBand()
-                .domain(chartData.uniqueCategories)
+                .domain(this.chartData.uniqueCategories)
                 .range([angleOffSet, angleOffSet + 360]);
 
             // and a few data related variables ...
             // TBD: FIX THAT 0 ...
-            let categorySizes = chartData.categories[0].map(value => {
-                let lastIdx = (chartData.dataPoints.map(v => v.category[0]).lastIndexOf(value))
-                let firstIdx = (chartData.dataPoints.map(v => v.category[0]).indexOf(value))
+            let categorySizes = this.chartData.categories[0].map(value => {
+                let lastIdx = (this.chartData.dataPoints.map(v => v.category[0]).lastIndexOf(value))
+                let firstIdx = (this.chartData.dataPoints.map(v => v.category[0]).indexOf(value))
                 return {
                     category: value,
                     size: (lastIdx - firstIdx + 1),
                     startIndex: firstIdx,
                     lastIndex: lastIdx,
-                    startAngle: (fieldScale(chartData.dataPoints[firstIdx].uniqueCategory) + 90) * Math.PI / 180,
-                    endAngle: (fieldScale(chartData.dataPoints[lastIdx].uniqueCategory) + 90) * Math.PI / 180
+                    startAngle: (fieldScale(this.chartData.dataPoints[firstIdx].uniqueCategory) + 90) * Math.PI / 180,
+                    endAngle: (fieldScale(this.chartData.dataPoints[lastIdx].uniqueCategory) + 90) * Math.PI / 180
                 }
             })
 
@@ -690,7 +701,7 @@ export class ViEvac_PolarChart implements IVisual {
             // ---------------------------------------------------------------------------------
             if (this.settings.categoryAxisLabels) {
                 // we do need to distinguish if we have a two-dimensional category set or only one category
-                if (chartData.uniqueCategories.length == 0 || chartData.categories.length == 1) {
+                if (this.chartData.uniqueCategories.length == 0 || this.chartData.categories.length == 1) {
                 } else {
                     // we have two dimensional data which means we will place arcs outside the circle to add labels
                     // We start by defining arcs for the text paths ...
@@ -801,11 +812,11 @@ export class ViEvac_PolarChart implements IVisual {
             // ---------------------------------------------------------------------------------
 
             // we do need a scale for size and for color ...
-            if (settings.impact.show) {
-                var impactScale = this.getImpactScale(chartData, this.settings)
+            if (this.settings.impact.show) {
+                var impactScale = this.getImpactScale(this.chartData, this.settings)
             }
-            if (settings.preparedness.show) {
-                var preparednessScale = this.getPreparednessScale(chartData, this.settings)
+            if (this.settings.preparedness.show) {
+                var preparednessScale = this.getPreparednessScale(this.chartData, this.settings)
             }
 
             // we calculate the radius of half the radar and scale it with our overlapping factor to get data size
@@ -814,11 +825,11 @@ export class ViEvac_PolarChart implements IVisual {
             let radarHalfR = dataScale((DataAxisMaxValue - DataAxisMinValue) / 2 + DataAxisMinValue)
             let dataCircleR: number = 0
 
-            if (settings.dataBasics.useFixedRadius) {
+            if (this.settings.dataBasics.useFixedRadius) {
                 // fixed radius. We still check for too large we do ...
                 let maxDataPointR = radarHalfR * ViEvac_PolarChart.maxDataFieldAngle / 2 * Math.PI / 180 -
                     this.settings.impact.minPointRadius
-                dataCircleR = Math.min(settings.dataBasics.scaleFactor, maxDataPointR)
+                dataCircleR = Math.min(this.settings.dataBasics.scaleFactor, maxDataPointR)
             } else {
                 // dynamic data ...
                 let maxDataFieldAngle = this.settings.dataBasics.scaleFactor * datafieldAngle
@@ -833,10 +844,10 @@ export class ViEvac_PolarChart implements IVisual {
             // we start with lines (and later do circles) ...
             // FIX THAT 0 ...
             var lineData: FieldLine[] = []
-            if (settings.groups.showLines) {
+            if (this.settings.groups.showLines) {
                 // data for the lines: we cycle all fields and extract the points for this field ...
-                chartData.uniqueCategories.forEach(field => {
-                    let fieldData = chartData.dataPoints.filter(dataPoint => dataPoint.uniqueCategory == field)
+                this.chartData.uniqueCategories.forEach(field => {
+                    let fieldData = this.chartData.dataPoints.filter(dataPoint => dataPoint.uniqueCategory == field)
 
                     // now get the data with max and min value (distance to center) ...
                     let maxFieldData = _.maxBy(fieldData, data => {
@@ -880,7 +891,7 @@ export class ViEvac_PolarChart implements IVisual {
                     .style('stroke-width', this.settings.groups.strokeWidth)
                     .style('stroke', function (d, i) {
                         // either std. color (preparedness) or groups
-                        return (settings.preparedness.show) ? settings.dataBasics.stroke : d.colorGroup.toString()
+                        return (self.settings.preparedness.show) ? self.settings.dataBasics.stroke : d.colorGroup.toString()
                         // either preparedness or groups (or none)
                     })
                     .attr("class", function (d) {
@@ -892,12 +903,12 @@ export class ViEvac_PolarChart implements IVisual {
             // now do the data points itself. 
             // create some container and data things and remove DOM (whatever ...)
             let dataCircles: Selection<DataPoint> = this.mainChart.selectAll("." + ViEvac_PolarChart.ClsDataCircles)
-            let dataCirclesData = dataCircles.data(chartData.dataPoints);
+            let dataCirclesData = dataCircles.data(this.chartData.dataPoints);
 
             let dataPointSettings = this.settings.dataBasics
 
             // cirles or no circles - that is here the question! (more than 7 groups also leads to circles) ...
-            if (settings.groups.useSymbols && chartData.groups.length <= 7) {
+            if (this.settings.groups.useSymbols && this.chartData.groups.length <= 7) {
                 // symbols it is. We generate them and do the plotting ...
                 let dataCirclesEntered = dataCirclesData
                     .enter()
@@ -917,36 +928,13 @@ export class ViEvac_PolarChart implements IVisual {
                         // here is magic. We need to know which group it is (get an index) and then
                         // call a symbolgenerator. However the type needs to be a symbol -> thus we call "d3"
                         // also size is radius squared by definition of symbols ...
-                        let groupIdx = chartData.groups.indexOf(d.group)
-                        let size = (settings.impact.show) ? dataCircleR * impactScale(d.values[1].measureValue) + settings.impact.minPointRadius : dataCircleR
+                        let groupIdx = self.chartData.groups.indexOf(d.group)
+                        let size = (self.settings.impact.show) ? dataCircleR * impactScale(d.values[1].measureValue) + self.settings.impact.minPointRadius : dataCircleR
                         symbolGenerator
                             .type(d3[ViEvac_PolarChart.d3Symbols[groupIdx]])
                             .size(ViEvac_PolarChart.symbolCorrectionFactor * Math.pow(size, 2))
                         return symbolGenerator()
                     })
-                    .attr('fill', function (d, i) {
-                        // either preparedness or groups (or none)
-                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
-                        return (dataPointSettings.fillArea) ? color : "None"
-                    })
-                    .style('stroke-width', this.settings.dataBasics.strokeWidth)
-                    .style('stroke', function (d, i) {
-                        // either preparedness or groups (or none)
-                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
-                        return (dataPointSettings.fillArea) ? dataPointSettings.stroke : color
-                    })
-                    .attr("class", function (d) {
-                        // add classes: a generic one, and one for segment and ring each ...
-                        let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category.toString().replace(/\s/g, '-')
-                        let clsRing: string = ViEvac_PolarChart.ClsDataRing
-                        clsRing = clsRing + bgSegments.map(s => s.innerRadius).sort((a, b) => { return b - a }).find(function (innerRadius) {
-                            return innerRadius < dataScale(Number(d.values[0].measureValue))
-                        }).toString().replace(/\s/g, '-')
-
-                        return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
-                    })
-                    .classed(ViEvac_PolarChart.ClsDataCircles, true)
-
             } else {
                 // now we simply draw our data points (as easy as that) ...
                 let dataCirclesEntered = dataCirclesData
@@ -964,58 +952,82 @@ export class ViEvac_PolarChart implements IVisual {
                         return getCartFromPolar(dataScale(Number(d.values[0].measureValue)), fieldScale(d.uniqueCategory), datafieldAngle / 2).y
                     })
                     .attr(ViEvac_PolarChart.AttrRadius, function (d) {
-                        if (settings.impact.show) {
-                            return dataCircleR * impactScale(d.values[1].measureValue) + settings.impact.minPointRadius
+                        if (self.settings.impact.show) {
+                            return dataCircleR * impactScale(d.values[1].measureValue) + self.settings.impact.minPointRadius
                         }
                         // we no fill do not ...
                         return dataCircleR
                     })
-                    .attr('fill', function (d, i) {
-                        // either preparedness or groups (or none)
-                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
-                        return (dataPointSettings.fillArea) ? color : "None"
-                    })
-                    .style('stroke-width', this.settings.dataBasics.strokeWidth)
-                    .style('stroke', function (d, i) {
-                        // either preparedness or groups (or none)
-                        let color = (settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
-                        return (dataPointSettings.fillArea) ? dataPointSettings.stroke : color
-                    })
-                    .attr("class", function (d) {
-                        // add classes: a generic one, and one for segment and ring each ...
-                        let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category[0] // FIX THAT AND MATCH WITH OTHERS
-                        let clsRing: string = ViEvac_PolarChart.ClsDataRing
-
-                        clsRing = clsRing + bgSegments.map(s => s.innerRadius).sort((a, b) => { return b - a }).find(function (innerRadius) {
-                            return innerRadius <= (dataScale(Number(d.values[0].measureValue)) + Math.ceil(Number(settings.categoryAxis.strokeWidth) / 2))
-                        }).toString().replace(/\s/g, '-')
-
-                        return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
-                    })
-                    .classed(ViEvac_PolarChart.ClsDataCircles, true)
             }
+
+            // add the other stuff and on-click
+            dataCirclesMerged
+                .attr('fill', function (d, i) {
+                    // either preparedness or groups (or none)
+                    let color = (self.settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
+                    return (dataPointSettings.fillArea) ? color : "None"
+                })
+                .style('stroke-width', this.settings.dataBasics.strokeWidth)
+                .style('stroke', function (d, i) {
+                    // either preparedness or groups (or none)
+                    let color = (self.settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
+                    return (dataPointSettings.fillArea) ? dataPointSettings.stroke : color
+                })
+                .attr("class", (d) => {
+                    // add classes: a generic one, and one for segment and ring each ...
+                    let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category.toString().replace(/\s/g, '-')
+                    let clsRing: string = ViEvac_PolarChart.ClsDataRing
+                    clsRing = clsRing + bgSegments.map(s => s.innerRadius).sort((a, b) => { return b - a }).find(function (innerRadius) {
+                        return innerRadius < dataScale(Number(d.values[0].measureValue))
+                    }).toString().replace(/\s/g, '-')
+
+                    return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
+                })
+                .classed(ViEvac_PolarChart.ClsDataCircles, true)
+                .on("click", (d) => {
+                    // Allow selection only if the visual is rendered in a view that supports interactivity (e.g. Report)
+                    if (this.host.allowInteractions) {
+                        // now ... on click we select this datapoint and then remove some opacity for all other points.
+                        // before that we do some clicking behaviour ...
+                        const isCtrlPressed: boolean = (d3.event as MouseEvent).ctrlKey;
+
+
+                        self.selectionManager.select(d.identity, isCtrlPressed)
+                            .then((ids: ISelectionId[]) => {
+                                // syncSelectionState(this.dataSelection, ids)
+                                if (ids.length > 0) {
+                                    dataCirclesMerged.style("fill-opacity", d => {
+                                        return isSelectionIdInArray(ids, d.identity) ? ViEvac_PolarChart.SelectOpacity : ViEvac_PolarChart.DeSelectOpacity
+                                    })
+                                } else {
+                                    dataCirclesMerged.style("fill-opacity", 1)
+                                }
+                            });
+
+                        // stop D3 from doing something (don't know what) ...
+                        (<Event>d3.event).stopPropagation();
+                    }
+                })
 
             // ---------------------------------------------------------------------------------
             // now ... what about legends? (this is going to hurt)
             // ---------------------------------------------------------------------------------
 
-            if (settings.legend.show) {
+            if (this.settings.legend.show) {
                 // we do start with the impact ...
-                if (settings.impact.show) {
+                if (this.settings.impact.show) {
 
                 }
             }
 
             // we want tooltips ...
             this.tooltipServiceWrapper.addTooltip(dataCirclesMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
-                console.log("TP", tooltipEvent)
-
                 return tooltipEvent.data.tooltipInfo;
             });
 
 
             // remove after finish ...
-            console.log("ChartData", chartData)
+            console.log("ChartData", this.chartData)
         } catch (ex) {
 
         }
