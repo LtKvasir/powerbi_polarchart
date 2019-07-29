@@ -97,6 +97,7 @@ import {
     getColorScale,
     getRangePoints,
     isSelectionIdInArray,
+    isSelectionKeyInArray,
     syncSelectionState
 } from "./utilities";
 import { text } from "d3";
@@ -281,20 +282,22 @@ export class ViEvac_PolarChart implements IVisual {
 
         // and now we get the stuff done. So I'll explain: We first do a temporary array, where we 
         // will get all datapoints there are ... 
-        dataView.categorical.categories[0].values.forEach((category, index) => {
+        let lastIdx = dataView.categorical.categories.length - 1
+
+        dataView.categorical.categories[lastIdx].values.forEach((category, index) => {
             // now cycle through every group (group) within the category
             dataView.categorical.values.forEach((groupArray, groupIdx) => {
                 // get the formatting (why ever) ...
                 let groupFormatter = valueFormatter.create({
                     format: groupArray.source.format,
-                    value: dataView.categorical.values[0].values[0]
+                    value: dataView.categorical.values[lastIdx].values[lastIdx]
                 });
 
                 // we do strange things for selections ...
                 let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
 
                 let identity: any = selectionIdBuilder
-                    .withCategory(dataView.categorical.categories[0], index)
+                    .withCategory(dataView.categorical.categories[lastIdx], index)
                     .withSeries(dataView.categorical.values, dataView.categorical.values[groupIdx])
                     .createSelectionId();
 
@@ -484,7 +487,7 @@ export class ViEvac_PolarChart implements IVisual {
 
             // do selection things ...
             this.selectionManager = this.host.createSelectionManager();
-            
+
 
             // set size variables within the class for further use  ...
             this.setChartSizes(options.viewport, this.chartData)
@@ -858,11 +861,17 @@ export class ViEvac_PolarChart implements IVisual {
                         return Number(data.values[0].measureValue)
                     })
 
+                    let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
+                    let lastIdx = maxFieldData.category.length - 1
+
                     lineData.push({
                         minValue: minFieldData.values[0].measureValue,
                         maxValue: maxFieldData.values[0].measureValue,
                         colorGroup: maxFieldData.color,
-                        fieldID: maxFieldData.uniqueCategory
+                        fieldID: maxFieldData.uniqueCategory,
+                        identity: selectionIdBuilder
+                            .withCategory(dataView.categorical.categories[lastIdx], dataView.categorical.categories[lastIdx].values.indexOf(maxFieldData.category[lastIdx]))
+                            .createSelectionId()
                     })
                 })
 
@@ -872,7 +881,7 @@ export class ViEvac_PolarChart implements IVisual {
                 let groupLinesEntered = groupLinesData
                     .enter()
                     .append(ViEvac_PolarChart.HtmlObjLine)
-                let groupLinesMerged = groupLinesEntered.merge(groupLines)
+                var groupLinesMerged = groupLinesEntered.merge(groupLines)
 
                 // do the lines ...
                 groupLinesMerged
@@ -990,19 +999,30 @@ export class ViEvac_PolarChart implements IVisual {
                         // now ... on click we select this datapoint and then remove some opacity for all other points.
                         // before that we do some clicking behaviour ...
                         const isCtrlPressed: boolean = (d3.event as MouseEvent).ctrlKey;
-
-
                         self.selectionManager.select(d.identity, isCtrlPressed)
                             .then((ids: ISelectionId[]) => {
                                 // syncSelectionState(this.dataSelection, ids)
                                 if (ids.length > 0) {
                                     dataCirclesMerged.style("fill-opacity", d => {
-                                        return isSelectionIdInArray(ids, d.identity) ? ViEvac_PolarChart.SelectOpacity : ViEvac_PolarChart.DeSelectOpacity
+                                        return isSelectionKeyInArray(
+                                            ids, 
+                                            d.identity, 
+                                            self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
+                                            ) ? ViEvac_PolarChart.SelectOpacity : ViEvac_PolarChart.DeSelectOpacity
+                                    })
+                                    groupLinesMerged.style("stroke-opacity", d => {
+                                        return isSelectionKeyInArray(
+                                            ids, 
+                                            d.identity, 
+                                            self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
+                                            ) ? ViEvac_PolarChart.SelectOpacity : ViEvac_PolarChart.DeSelectOpacity
                                     })
                                 } else {
                                     dataCirclesMerged.style("fill-opacity", 1)
                                 }
                             });
+
+                        console.log("FINISHED");
 
                         // stop D3 from doing something (don't know what) ...
                         (<Event>d3.event).stopPropagation();

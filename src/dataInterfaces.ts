@@ -94,6 +94,11 @@ export interface FieldLine {
     maxValue: powerbi.PrimitiveValue;
     colorGroup: powerbi.PrimitiveValue;
     fieldID: string;
+    identity: any;
+}
+
+export interface VISelectionId extends ISelectionId {
+    
 }
 
 export interface IColorArray {

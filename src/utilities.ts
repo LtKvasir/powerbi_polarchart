@@ -41,6 +41,7 @@ import DataViewObjects = powerbi.DataViewObjects;
 import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
 
 import ISelectionId = powerbi.extensibility.ISelectionId;
+import ISelectionIdVisual = powerbi.extensibility.ISelectionId;
 
 import {
     ChartData,
@@ -176,6 +177,31 @@ export function getRangePoints(minValue: number, maxValue: number, numSteps: num
     }
     return result
 }
+
+export function isSelectionKeyInArray(selectionIds: ISelectionIdVisual[], selectionId: ISelectionIdVisual, source: string): boolean {
+    if (!selectionIds || !selectionId) {
+        return false;
+    }
+
+    if (!selectionIds[0]['dataMap'][source]) {
+        return false;
+    }
+
+    let isIncluded = selectionIds.map(id => {
+        return id['dataMap'][source][0] == selectionId['dataMap'][source][0]
+    })
+    return isIncluded.some(v => v == true)
+}
+
+export function getSelectionIdAttribute(selectionId: ISelectionIdVisual, keyString: string) {
+    if (!keyString || !selectionId) {
+        return false;
+    }
+
+    // TODO: GET KEY AFTER "..." : 
+}
+
+
 
 export function syncSelectionState(
     selection: Selection<DataPoint>,

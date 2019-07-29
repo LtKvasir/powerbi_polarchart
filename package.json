@@ -13,6 +13,8 @@
     "start:dev": "webpack-dev-server --mode development"
   },
   "dependencies": {
+    "babel": "^7.4.5",
+    "core-js": "^3.1.4",
     "css-loader": "^2.1.0",
     "d3": "5.7.0",
     "extra-watch-webpack-plugin": "^1.0.3",
