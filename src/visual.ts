@@ -98,7 +98,8 @@ import {
     getRangePoints,
     isSelectionIdInArray,
     isSelectionKeyInArray,
-    syncSelectionState
+    syncSelectionState,
+    getAnimationMode
 } from "./utilities";
 import { text } from "d3";
 import { numberFormat } from "powerbi-visuals-utils-formattingutils/lib/src/formattingService/formattingService";
@@ -488,6 +489,8 @@ export class ViEvac_PolarChart implements IVisual {
             // do selection things ...
             this.selectionManager = this.host.createSelectionManager();
 
+            // and some animation things ...
+            var suppressAnimations: boolean = false;
 
             // set size variables within the class for further use  ...
             this.setChartSizes(options.viewport, this.chartData)
@@ -1001,28 +1004,56 @@ export class ViEvac_PolarChart implements IVisual {
                         const isCtrlPressed: boolean = (d3.event as MouseEvent).ctrlKey;
                         self.selectionManager.select(d.identity, isCtrlPressed)
                             .then((ids: ISelectionId[]) => {
-                                // syncSelectionState(this.dataSelection, ids)
                                 if (ids.length > 0) {
-                                    dataCirclesMerged.style("fill-opacity", d => {
-                                        return isSelectionKeyInArray(
-                                            ids, 
-                                            d.identity, 
+                                    // we do have some selected. Let's do them and the others (we do it this nasty way to be able to
+                                    // also raise() the selected thingies [which just looks nicer]) ...
+
+                                    // lines first ...
+                                    getAnimationMode(groupLinesMerged.filter(d => {
+                                        return !isSelectionKeyInArray(
+                                            ids,
+                                            d.identity,
                                             self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
-                                            ) ? ViEvac_PolarChart.SelectOpacity : ViEvac_PolarChart.DeSelectOpacity
-                                    })
-                                    groupLinesMerged.style("stroke-opacity", d => {
+                                        )
+                                    }), suppressAnimations, ViEvac_PolarChart.animationDuration).style("stroke-opacity", ViEvac_PolarChart.DeSelectOpacity)
+
+                                    let selectedGroupLines = groupLinesMerged.filter(d => {
                                         return isSelectionKeyInArray(
-                                            ids, 
-                                            d.identity, 
+                                            ids,
+                                            d.identity,
                                             self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
-                                            ) ? ViEvac_PolarChart.SelectOpacity : ViEvac_PolarChart.DeSelectOpacity
-                                    })
+                                        )
+                                    }).raise()
+                                    getAnimationMode(selectedGroupLines, suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                        .style("stroke-opacity", ViEvac_PolarChart.SelectOpacity)
+
+                                    // circles now ...
+                                    getAnimationMode(dataCirclesMerged.filter(d => {
+                                        return !isSelectionKeyInArray(
+                                            ids,
+                                            d.identity,
+                                            self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
+                                        )
+                                    }), suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                        .style("fill-opacity", ViEvac_PolarChart.DeSelectOpacity)
+
+                                    let selectedCircles = dataCirclesMerged.filter(d => {
+                                        return isSelectionKeyInArray(
+                                            ids,
+                                            d.identity,
+                                            self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
+                                        )
+                                    }).raise()
+                                    getAnimationMode(selectedCircles, suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                        .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
+
                                 } else {
-                                    dataCirclesMerged.style("fill-opacity", 1)
+                                    getAnimationMode(dataCirclesMerged, suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                        .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
+                                    getAnimationMode(groupLinesMerged, suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                        .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
                                 }
                             });
-
-                        console.log("FINISHED");
 
                         // stop D3 from doing something (don't know what) ...
                         (<Event>d3.event).stopPropagation();
@@ -1034,8 +1065,20 @@ export class ViEvac_PolarChart implements IVisual {
             // ---------------------------------------------------------------------------------
 
             if (this.settings.legend.show) {
+                // before we start doing the legends we will have a look at the space available 
+                // to keep it simple we give every legend the same space ...
+                let nLeg: number = 0;
+                let idxLeg: number = 0;
+                if (this.settings.impact.show) { nLeg++ }
+                if (this.settings.preparedness.show) { nLeg++ }
+                if (this.chartData.groups.length > 1) {nLeg++}
+                let SinglelegendWidth: number = this.chartSizes.vpWidth / nLeg
+
+
                 // we do start with the impact ...
                 if (this.settings.impact.show) {
+                    // okey ... we do need the data values - which we calculate by our private method
+                    console.log(this.getImpactLegendData(impactScale))
 
                 }
             }
@@ -1383,5 +1426,55 @@ export class ViEvac_PolarChart implements IVisual {
 
         // we now return the size (in pixels) d3 needs for this ...
         return labelHeight * 2 + (2 * dataCircleR) + this.LegendLabelOffset * 2
+    }
+
+    private getImpactLegendData(impactScale: any): any {
+        // we first need input min and max ...
+        let inputMin: number = null
+        let inputMax: number = null
+
+        // we first set the input to the data intervall ..
+        if (this.chartData.dataPoints) {
+            inputMin = d3.min(this.chartData.dataPoints, function (d: DataPoint) {
+                return Number(d.values[1].measureValue);
+            });
+            inputMax = d3.max(this.chartData.dataPoints, function (d: DataPoint) {
+                return Number(d.values[1].measureValue);
+            });
+        }
+
+        // now we override it, but only if valid settings are given ...
+        if (this.settings.impact.maxValue > 0 && this.settings.impact.maxValue > this.settings.impact.minValue) {
+            inputMin = !(this.settings.impact.minValue == null) ? this.settings.impact.minValue : inputMin
+            inputMax = this.settings.impact.maxValue
+        }
+
+        // now we create the legend values ... 
+        // create a datavalues array and then do a tooltip ready dictionary ...
+        let legendDataValues: number[] = []
+        if (this.settings.impact.bucketScale) {
+            // we do get quantiles ...
+            legendDataValues = [inputMin].concat(impactScale.quantiles());
+        } else {
+            // or values from a linear thingie ...
+            legendDataValues = getRangePoints(inputMin, inputMax, this.settings.impact.buckets + 1)
+            legendDataValues.splice(-1,1)
+        }
+
+        let legendData = legendDataValues.map((value, index) => {
+            return {
+                value: value,
+                tooltipInfo: [{
+                    displayName: `Min value`,
+                    value: value && typeof value.toFixed === "function" ? value.toFixed(2) : this.chartData.categoryValueFormatter.format(value)
+                },
+                {
+                    displayName: `Max value`,
+                    value: legendDataValues[index + 1] && typeof legendDataValues[index + 1].toFixed === "function" ? legendDataValues[index + 1].toFixed(2) : this.chartData.categoryValueFormatter.format(inputMax)
+                }]
+            };
+        });
+
+        return legendData
     }
 }

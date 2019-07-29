@@ -59,8 +59,10 @@ import {
 import { color } from "d3";
 import { ViEvac_PolarChart } from "./visual";
 
+// ---------------------------- A FEW D3 DEFINITIONS ---------------------------------
 type Selection<T> = d3.Selection<any, T, any, any>;
-
+type D3Element =
+    Selection<any>;
 
 /**
  * Gets the height of a text field to calculate space needed for axis ...
@@ -178,6 +180,12 @@ export function getRangePoints(minValue: number, maxValue: number, numSteps: num
     return result
 }
 
+/**
+ * Returns true if the selectionId is within an array of selectionIds concerning a given source (category, ...)
+ * @param selectionIds 
+ * @param selectionId 
+ * @param source 
+ */
 export function isSelectionKeyInArray(selectionIds: ISelectionIdVisual[], selectionId: ISelectionIdVisual, source: string): boolean {
     if (!selectionIds || !selectionId) {
         return false;
@@ -192,16 +200,6 @@ export function isSelectionKeyInArray(selectionIds: ISelectionIdVisual[], select
     })
     return isIncluded.some(v => v == true)
 }
-
-export function getSelectionIdAttribute(selectionId: ISelectionIdVisual, keyString: string) {
-    if (!keyString || !selectionId) {
-        return false;
-    }
-
-    // TODO: GET KEY AFTER "..." : 
-}
-
-
 
 export function syncSelectionState(
     selection: Selection<DataPoint>,
@@ -244,15 +242,17 @@ export function isSelectionIdInArray(selectionIds: ISelectionId[], selectionId: 
     return selectionIds.indexOf(selectionId) >= 0;
 }
 
-// function computeDimensions(selection) {
-//     var dimensions = null;
-//     var node = selection.node();
+/**
+ * Adds an animation (if set)
+ * @param element 
+ * @param suppressAnimations 
+ * @param animationDuration 
+ */
+export function getAnimationMode(element: D3Element, suppressAnimations: boolean, animationDuration: number): D3Element {
+    if (suppressAnimations) {
+        return element;
+    }
 
-//     if (node instanceof SVGElement) { // check if node is svg element
-//       dimensions = node.getBBox();
-//     } else { // else is html element
-//       dimensions = node.getBoundingClientRect();
-//     }
-//     console.log(dimensions);
-//     return dimensions;
-//   }
+    return (<any>element)
+        .transition().duration(animationDuration);
+}
