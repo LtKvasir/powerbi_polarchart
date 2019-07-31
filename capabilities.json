@@ -279,6 +279,16 @@
                     "type": {
                         "numeric": true
                     }
+                },
+                "legendColor": {
+                    "displayName": "Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
                 }
             }
         },

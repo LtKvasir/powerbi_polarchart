@@ -76,7 +76,6 @@ export class GroupSettings {
     public showLines: boolean = true;
     public strokeWidth: number = 1;
     public useSymbols: boolean = false;
-
 }
 
  export class impactSettings {
@@ -87,6 +86,7 @@ export class GroupSettings {
     public clamp: boolean = true;
     public minValue: number = null;
     public maxValue: number = null;
+    public legendColor: string = "grey";
 }
 
 export class preparednessSettings {
