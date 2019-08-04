@@ -161,7 +161,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static LabelOffsetDY: number = 2;
 
     private CategoryLabelOffset: number = 5;
-    private LegendLabelOffset: number = 2;
+    private LegendLabelOffset: number = 4;
 
     private static SelectOpacity: number = 1.0;
     private static DeSelectOpacity: number = 0.2;
@@ -1087,6 +1087,14 @@ export class ViEvac_PolarChart implements IVisual {
                     .classed(ViEvac_PolarChart.ClsLegendWrapper, true)
                     .attr(ViEvac_PolarChart.AttrTransform, translate(
                         0, this.chartSizes.radarCY * 2))
+
+                // legendWrapper
+                //     .append("rect")
+                //     .attr("x", 0)
+                //     .attr("y", 0)
+                //     .attr("width", this.chartSizes.vpWidth)
+                //     .attr("height", this.chartSizes.vpHeight)
+                //     .attr("fill", "#EEE")
 
                 // and we wanna know the height of labels ...
                 let labelHeight = TextMeasurementService.measureSvgTextHeight({
