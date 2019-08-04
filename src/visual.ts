@@ -976,6 +976,9 @@ export class ViEvac_PolarChart implements IVisual {
                     })
             }
 
+            console.log(dataCirclesMerged)
+
+
             // add the other stuff and on-click
             dataCirclesMerged
                 .attr('fill', function (d, i) {
@@ -1119,23 +1122,23 @@ export class ViEvac_PolarChart implements IVisual {
                     let numItems = Math.floor(oneLegendWidth / oneLegendItemWidth)
                     let toPlotlegendData = []
 
-
                     // so this next thing picks only selected items depending on how much space we have ...
-                    for (var i = 0; i < legendData.length; i += Math.ceil(legendData.length / numItems)) {
-                        toPlotlegendData.push(legendData[i]);
+                    for (var i = 0; Math.ceil(i) < legendData.length; i += (legendData.length / numItems)) {
+                        toPlotlegendData.push(legendData[Math.ceil(i)]);
                     }
 
                     // we do need to plot it now. Starting with DOM things ...
                     let legendSelection: Selection<any> = legendWrapper.selectAll("." + ViEvac_PolarChart.ClsLegend);
-                    let legendSelectionData = legendSelection.data(legendData)
+                    let legendSelectionData = legendSelection.data(toPlotlegendData)
                     legendSelectionData
                         .exit()
                         .remove()
 
                     let legendSelectionEntered = legendSelectionData
                         .enter()
+                        .append(ViEvac_PolarChart.HtmlObjG)
 
-                    let legendSelectionMerged: Selection<any> = legendSelectionEntered.merge(legendSelection);
+                    let legendSelectionMerged = legendSelectionEntered.merge(legendSelection);
 
                     // and do the circles now ...
                     legendSelectionMerged
@@ -1165,12 +1168,12 @@ export class ViEvac_PolarChart implements IVisual {
                         .style("font-family", this.settings.legend.fontFamily);
 
                     // and add the tooltip (this seems just to be how the library works ...)
-                    // this.tooltipServiceWrapper.addTooltip(
-                    //     legendSelectionMerged,
-                    //     (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
-                    //         return tooltipEvent.data.tooltipInfo;
-                    //     }
-                    // );
+                    this.tooltipServiceWrapper.addTooltip(
+                        legendSelectionMerged,
+                        (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
+                            return tooltipEvent.data.tooltipInfo;
+                        }
+                    );
                 }
             }
 
