@@ -75,7 +75,7 @@ export interface ChartSizes {
     radarR: number;
     radarCX: number;
     radarCY: number;
-    axisLabelHeight: number;    
+    axisLabelHeight: number;
     angleOffSet: number;
     legendHeight: number;
 }
@@ -89,6 +89,12 @@ export interface BgSegment {
     ring: number;
 }
 
+export interface GroupLabelData {
+    idx: number;
+    name: string;
+    symbol: any;
+}
+
 export interface FieldLine {
     minValue: powerbi.PrimitiveValue;
     maxValue: powerbi.PrimitiveValue;
@@ -98,7 +104,7 @@ export interface FieldLine {
 }
 
 export interface VISelectionId extends ISelectionId {
-    
+
 }
 
 export interface IColorArray {

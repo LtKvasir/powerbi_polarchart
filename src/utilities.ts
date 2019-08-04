@@ -27,6 +27,7 @@
 import powerbi from "powerbi-visuals-api";
 import IViewport = powerbi.IViewport;
 
+
 import * as _ from "lodash-es";
 import * as d3 from "d3";
 
@@ -34,6 +35,10 @@ import * as d3 from "d3";
 import { pixelConverter as PixelConverter } from "powerbi-visuals-utils-typeutils";
 import { valueFormatter, textMeasurementService } from "powerbi-visuals-utils-formattingutils";
 import { createLinearColorScale, LinearColorScale, ColorHelper } from "powerbi-visuals-utils-colorutils";
+
+import { axis } from "powerbi-visuals-utils-chartutils";
+import LabelLayoutStrategy = axis.LabelLayoutStrategy;
+
 
 import TextMeasurementService = textMeasurementService.textMeasurementService;
 
@@ -255,4 +260,68 @@ export function getAnimationMode(element: D3Element, suppressAnimations: boolean
 
     return (<any>element)
         .transition().duration(animationDuration);
+}
+
+/**
+ * Truncates a txt to a limit provided
+ * @param text Text to be truncated
+ * @param limit Limit in number of characters
+ */
+export function textLimit(text: string, limit: number) {
+    if (text.length > limit) {
+        return ((text || "").substring(0, limit - 3).trim()) + "…";
+    }
+
+    return text;
+}
+
+/**
+ * Truncates a text to a given width (in px)
+ * @param text Text to be truncated
+ * @param width limit in pixels
+ */
+export function truncateTextIfNeeded(text: Selection<any>, width: number): void {
+    text.call(LabelLayoutStrategy.clip,
+        width,
+        TextMeasurementService.svgEllipsis);
+}
+
+/**
+ * Takes a selection, splits it into single words and puts it back 
+ * together but only until the width limit is reached 
+ * @param text Selection<D3Element>
+ * @param width number
+ */
+export function wrap(text: Selection<D3Element>, width: number): void {
+
+    // we cycle through each element in the text selection
+    text.each(function () {
+
+        // define a few things: the selection, each word, lines of text, numbers and heights ...
+        let text: Selection<D3Element> = d3.select(this);
+        let words: string[] = text.text().split(/\s+/).reverse();
+        let word: string;
+        let line: string[] = [];
+        let lineNumber: number = 0;
+        let lineHeight: number = 1.1; // ems
+
+        // do whatever ...
+        let x: string = text.attr("x");
+        let y: string = text.attr("y");
+        let dy: number = parseFloat(text.attr("dy"));
+        let tspan: Selection<any> = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em");
+
+        // now cycle through all words and add 'em until the limit is reached ...
+        while (word = words.pop()) {
+            line.push(word);
+            tspan.text(line.join(" "));
+            let tspannode: any = tspan.node();  // Fixing Typescript error: Property 'getComputedTextLength' does not exist on type 'Element'.
+            if (tspannode.getComputedTextLength() > width) {
+                line.pop();
+                tspan.text(line.join(" "));
+                line = [word];
+                tspan = text.append("tspan").attr("x", x).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+            }
+        }
+    });
 }
