@@ -1100,6 +1100,7 @@ export class ViEvac_PolarChart implements IVisual {
                 // -------------------------------------------------------------------------------
                 // we do a generic height for plotting which will be adjusted when used ...
                 var legendItemRadius = dataCircleR
+
                 // we do start with the impact ...
                 if (this.settings.impact.show) {
                     // the group ...
@@ -1161,7 +1162,7 @@ export class ViEvac_PolarChart implements IVisual {
                         .attr('r', (d, i) => {
                             return dataCircleR * Number(impactScale(d.value)) + self.settings.impact.minPointRadius
                         })
-                        .attr('fill', this.settings.impact.legendColor)
+                        .attr('fill', this.settings.legend.fillItems)
                         .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
                         .style('stroke', this.settings.dataBasics.stroke)
 
@@ -1256,7 +1257,7 @@ export class ViEvac_PolarChart implements IVisual {
                                 let aDataPoint = self.chartData.dataPoints.find(dP => {
                                     return dP.group == d.name
                                 })
-                                return aDataPoint.color
+                                return (self.settings.preparedness.show) ? self.settings.legend.fillItems : aDataPoint.color
                             })
                             .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
                             .style('stroke', this.settings.dataBasics.stroke)
@@ -1270,7 +1271,7 @@ export class ViEvac_PolarChart implements IVisual {
                                 let aDataPoint = self.chartData.dataPoints.find(dP => {
                                     return dP.group == d.name
                                 })
-                                return aDataPoint.color
+                                return (self.settings.preparedness.show) ? self.settings.legend.fillItems : aDataPoint.color
                             })
                             .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
                             .style('stroke', this.settings.dataBasics.stroke)
@@ -1299,8 +1300,14 @@ export class ViEvac_PolarChart implements IVisual {
                         (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
                             return tooltipEvent.data.tooltipInfo;
                         }
-                    );
+                    )
+
+                    // at the end increase the idx ..
+                    idxLeg++
                 }
+
+                // -------------------------------------------------------------------------------
+                // prepardness next (and last thankfully) ...
             }
 
             // we want tooltips ...

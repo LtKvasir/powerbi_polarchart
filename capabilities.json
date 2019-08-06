@@ -279,16 +279,6 @@
                     "type": {
                         "numeric": true
                     }
-                },
-                "legendColor": {
-                    "displayName": "Color",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
                 }
             }
         },
@@ -1117,7 +1107,7 @@
                     }
                 },
                 "fill": {
-                    "displayName": "Color",
+                    "displayName": "Text Color",
                     "displayNameKey": "Visual_LabelsFill",
                     "type": {
                         "fill": {
@@ -1224,6 +1214,16 @@
                                 "value": "Wingdings"
                             }
                         ]
+                    }
+                },
+                "fillItems": {
+                    "displayName": "Item Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
                     }
                 }
             }

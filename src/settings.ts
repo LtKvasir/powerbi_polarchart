@@ -86,7 +86,6 @@ export class GroupSettings {
     public clamp: boolean = true;
     public minValue: number = null;
     public maxValue: number = null;
-    public legendColor: string = "grey";
 }
 
 export class preparednessSettings {
@@ -146,6 +145,8 @@ export class LegendSettings {
     public fill: string = "#aaa";
     public fontSize: number = DefaultFontSize;
     public fontFamily: string = "Arial";
+    public fillItems: string = "grey";
+
 }
 
 /**
