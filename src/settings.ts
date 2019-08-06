@@ -146,6 +146,7 @@ export class LegendSettings {
     public fill: string = "#aaa";
     public fontSize: number = DefaultFontSize;
     public fontFamily: string = "Arial";
+    public fontWeight: number = 600; 
 }
 
 /**

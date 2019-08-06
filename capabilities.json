@@ -1225,6 +1225,12 @@
                             }
                         ]
                     }
+                },
+                "fontWeight": {
+                    "displayName": "Font Weight",
+                    "type": {
+                        "numeric": true
+                    }
                 }
             }
         }
