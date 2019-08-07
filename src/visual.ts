@@ -223,6 +223,9 @@ export class ViEvac_PolarChart implements IVisual {
     private static Const0em: string = "0em";
     private static Const071em: string = ".71em";
 
+    private static ConstWeightMin: number = 100;
+    private static ConstWeightMax: number = 1000;
+
     private static d3Symbols: string[] = ['symbolCircle', 'symbolCross', 'symbolDiamond', 'symbolSquare', 'symbolStar', 'symbolTriangle', 'symbolWye'];
 
 
@@ -237,6 +240,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static ClsLegendTitle: string = "LegendTitle"
     private static ClsImpactLegendWrapper: string = "ImpactLegend"
     private static ClsGroupLegendWrapper: string = "GroupLegend"
+    private static ClsPrepLegendWrapper: string = "PreparednessLegend"
     private static ClsAxisLevels: string = "DataAxisLevels"
     private static ClsAxisLabels: string = "DataAxisLabels"
     private static ClsCategoryAxisLines: string = "CategoryAxisLines"
@@ -1121,7 +1125,7 @@ export class ViEvac_PolarChart implements IVisual {
                         .style("text-anchor", ViEvac_PolarChart.ConstBegin)
                         .style("fill", this.settings.legend.fill)
                         .style("font-size", this.settings.legend.fontSize)
-                        .style("font-weight", 600) // TODO: SETTINGS FOR THIS
+                        .style("font-weight", this.settings.legend.fontWeight)
                         .style("font-family", this.settings.legend.fontFamily);
 
                     // okey ... we do need the data values - which we calculate by our private method
@@ -1218,7 +1222,7 @@ export class ViEvac_PolarChart implements IVisual {
                         .style("text-anchor", ViEvac_PolarChart.ConstBegin)
                         .style("fill", this.settings.legend.fill)
                         .style("font-size", this.settings.legend.fontSize)
-                        .style("font-weight", 600) // TODO: SETTINGS FOR THIS
+                        .style("font-weight", this.settings.legend.fontWeight)
                         .style("font-family", this.settings.legend.fontFamily);
 
                     // we need some sizes and such ...
@@ -1300,7 +1304,97 @@ export class ViEvac_PolarChart implements IVisual {
                         (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
                             return tooltipEvent.data.tooltipInfo;
                         }
-                    )
+                    );
+
+                    // at the end increase the idx ..
+                    idxLeg++
+                }
+
+                // -------------------------------------------------------------------------------
+                // preparedness last ...
+                if (this.settings.preparedness.show) {
+                    // the group ...
+                    let prepLegendWrapper = legendWrapper
+                        .append(ViEvac_PolarChart.HtmlObjG)
+                        .classed(ViEvac_PolarChart.ClsPrepLegendWrapper, true)
+                        .attr(ViEvac_PolarChart.AttrTransform, translate(
+                            idxLeg * oneLegendWidth, 0))
+
+                    // add the legend label ...
+                    prepLegendWrapper
+                        .append(ViEvac_PolarChart.HtmlObjText)
+                        .classed(ViEvac_PolarChart.ClsLegendLabel, true)
+                        .attr("x", 0)
+                        .attr("y", 0)
+                        .attr("dy", labelHeight)
+                        .text(this.chartData.dataPoints[0].values[2].measureName)
+                        .style("text-anchor", ViEvac_PolarChart.ConstBegin)
+                        .style("fill", this.settings.legend.fill)
+                        .style("font-size", this.settings.legend.fontSize)
+                        .style("font-weight", this.settings.legend.fontWeight)
+                        .style("font-family", this.settings.legend.fontFamily);
+
+                    // okey ... we do need the data values - which we calculate by our private method
+                    let legendData = this.getPreparednessLegendData(preparednessScale)
+
+                    // now we honestly need to check our available space. If we got more items than space we 
+                    // need to cherry pick ...
+                    let oneLegendItemWidth = 2 * dataCircleR + ViEvac_PolarChart.LegendAttrDistance
+                    let numItems = Math.floor(oneLegendWidth / oneLegendItemWidth)
+                    let toPlotlegendData = []
+
+                    // so this next thing picks only selected items depending on how much space we have ...
+                    for (var i = 0; Math.ceil(i) < legendData.length; i += Math.max(1, (legendData.length / numItems))) {
+                        toPlotlegendData.push(legendData[Math.ceil(i)]);
+                    }
+
+                    // we do need to plot it now. Starting with DOM things ...
+                    let legendSelection: Selection<any> = prepLegendWrapper.selectAll("." + ViEvac_PolarChart.ClsLegend);
+                    let legendSelectionData = legendSelection.data(toPlotlegendData)
+                    legendSelectionData
+                        .exit()
+                        .remove()
+
+                    let legendSelectionEntered = legendSelectionData
+                        .enter()
+                        .append(ViEvac_PolarChart.HtmlObjG)
+
+                    let legendSelectionMerged = legendSelectionEntered.merge(legendSelection);
+
+                    // and do the circles now ...
+                    legendSelectionMerged
+                        .append(ViEvac_PolarChart.HtmlObjCircle)
+                        .attr('cx', (d, i) => (oneLegendItemWidth * i + dataCircleR))
+                        .attr('cy', legendItemRadius + labelHeight + this.LegendLabelOffset)
+                        .attr('r', dataCircleR)
+                        .attr('fill', (d,i) => { 
+                            return preparednessScale.scale(d.value)
+                        })
+                        .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
+                        .style('stroke', this.settings.dataBasics.stroke)
+
+                    // add some text we do ...
+                    legendSelectionMerged
+                        .append(ViEvac_PolarChart.HtmlObjText)
+                        .classed(ViEvac_PolarChart.ClsLegendLabel, true)
+                        .attr("x", (d, i) => (oneLegendItemWidth * i + dataCircleR))
+                        .attr("y", labelHeight + 2 * (legendItemRadius + this.LegendLabelOffset))
+                        .text(function (d) {
+                            return d.value.toFixed(0)
+                        })
+                        .attr("dy", labelHeight / 2)
+                        .style("text-anchor", ViEvac_PolarChart.ConstMiddle)
+                        .style("fill", this.settings.legend.fill)
+                        .style("font-size", this.settings.legend.fontSize)
+                        .style("font-family", this.settings.legend.fontFamily);
+
+                    // and add the tooltip (this seems just to be how the library works ...)
+                    this.tooltipServiceWrapper.addTooltip(
+                        legendSelectionMerged,
+                        (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
+                            return tooltipEvent.data.tooltipInfo;
+                        }
+                    );
 
                     // at the end increase the idx ..
                     idxLeg++
@@ -1371,6 +1465,10 @@ export class ViEvac_PolarChart implements IVisual {
         let nMeasures = dataView.categorical.values.length / dataView.categorical.categories.length
         if (nMeasures < 3) { settings.preparedness.show = false }
         if (nMeasures < 2) { settings.impact.show = false }
+
+        // lastly some fontWheigt things ...
+        let fW = settings.legend.fontWeight
+        if (fW < this.ConstWeightMin || fW > this.ConstWeightMax) { settings.legend.fontWeight = 600 }
 
         return settings
     }
@@ -1725,5 +1823,52 @@ export class ViEvac_PolarChart implements IVisual {
             })
         })
         return groupLegendData
+    }
+
+    private getPreparednessLegendData(preparednessScale: any): any {
+        // we first need input min and max ...
+        let inputMin: number = null
+        let inputMax: number = null
+
+        // we first set the input to the data intervall ..
+        if (this.chartData.dataPoints) {
+            inputMin = d3.min(this.chartData.dataPoints, function (d: DataPoint) {
+                return Number(d.values[1].measureValue);
+            });
+            inputMax = d3.max(this.chartData.dataPoints, function (d: DataPoint) {
+                return Number(d.values[1].measureValue);
+            });
+        }
+
+        // now we override it, but only if valid settings are given ...
+        if (this.settings.preparedness.maxValue > 0 && this.settings.preparedness.maxValue > this.settings.preparedness.minValue) {
+            inputMin = !(this.settings.preparedness.minValue == null) ? this.settings.preparedness.minValue : inputMin
+            inputMax = this.settings.preparedness.maxValue
+        }
+
+        // now we create the legend values ... 
+        // create a datavalues array and then do a tooltip ready dictionary ...
+        let legendDataValues: number[] = []
+        legendDataValues = [inputMin].concat(preparednessScale.scale.quantiles());
+        
+        console.log("VALUES", legendDataValues)
+
+        // map the value and the tooltipInfo ...
+        let legendData = legendDataValues.map((value, index) => {
+            return {
+                value: value,
+                tooltipInfo: [{
+                    displayName: `Min value`,
+                    value: value && typeof value.toFixed === "function" ? value.toFixed(2) : this.chartData.categoryValueFormatter.format(value)
+                },
+                {
+                    displayName: `Max value`,
+                    value: legendDataValues[index + 1] && typeof legendDataValues[index + 1].toFixed === "function" ? legendDataValues[index + 1].toFixed(2) : this.chartData.categoryValueFormatter.format(inputMax)
+                }]
+            };
+        });
+
+        // return it we do ...
+        return legendData
     }
 }
