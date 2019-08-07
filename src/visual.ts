@@ -1225,14 +1225,37 @@ export class ViEvac_PolarChart implements IVisual {
                         .style("font-weight", this.settings.legend.fontWeight)
                         .style("font-family", this.settings.legend.fontFamily);
 
-                    // we need some sizes and such ...
+                    // okey ... we do need the data values 
+                    // we start with  some sizes and such ...
                     let nGroups = this.chartData.groups.length
                     let oneLegendItemWidth = (oneLegendWidth / nGroups)
-                    let labelWidth = oneLegendItemWidth -
-                        dataCircleR * 2 - ViEvac_PolarChart.LegendAttrDistance - this.LegendLabelOffset
+                    let labelMaxWidth = oneLegendItemWidth -
+                        dataCircleR * 2 - ViEvac_PolarChart.LegendAttrDistance - 2 * this.LegendLabelOffset
 
-                    // okey ... we do need the data values - which we calculate by our private method
-                    let legendData = this.getGroupLegendData(dataCircleR)
+
+                    // so we need to check how many groups there are and get their names and symbols ...
+                    let legendData: GroupLabelData[] = []
+                    let totalXPos: number = legendItemRadius
+                    this.chartData.groups.forEach((group, i) => {
+                        // start by doing the symbol ...
+                        var symbolGenerator = d3.symbol()
+                        symbolGenerator
+                            .type(d3[ViEvac_PolarChart.d3Symbols[i]])
+                            .size(ViEvac_PolarChart.symbolCorrectionFactor * Math.pow(dataCircleR, 2))
+
+                        // and do it ...
+                        legendData.push({
+                            idx: i,
+                            name: group,
+                            symbol: symbolGenerator(),
+                            xPos: totalXPos
+                        })
+                        totalXPos += 2 * legendItemRadius + ViEvac_PolarChart.LegendAttrDistance + 2 * this.LegendLabelOffset + Math.min(labelMaxWidth, getTextSize(
+                            [group],
+                            this.settings.legend.fontSize,
+                            this.settings.legend.fontFamily).width
+                        )
+                    })
 
                     // we do need to plot it now. Starting with DOM things ...
                     let legendSelection: Selection<any> = groupLegendWrapper.selectAll("." + ViEvac_PolarChart.ClsLegend);
@@ -1252,7 +1275,7 @@ export class ViEvac_PolarChart implements IVisual {
                         legendSelectionMerged
                             .append(ViEvac_PolarChart.HtmlObjPath)
                             .attr('transform', function (d, i) {
-                                let transX = oneLegendItemWidth * i + legendItemRadius
+                                let transX = d.xPos
                                 let transY = legendItemRadius + labelHeight + self.LegendLabelOffset
                                 return 'translate(' + transX + ', ' + transY + ')';
                             })
@@ -1268,7 +1291,7 @@ export class ViEvac_PolarChart implements IVisual {
                     } else {
                         legendSelectionMerged
                             .append(ViEvac_PolarChart.HtmlObjCircle)
-                            .attr('cx', (d, i) => (oneLegendItemWidth * i + legendItemRadius))
+                            .attr('cx', (d, i) => (d.xPos + legendItemRadius))
                             .attr('cy', legendItemRadius + labelHeight + this.LegendLabelOffset)
                             .attr('r', dataCircleR)
                             .attr('fill', (d, i) => {
@@ -1285,7 +1308,7 @@ export class ViEvac_PolarChart implements IVisual {
                     legendSelectionMerged
                         .append(ViEvac_PolarChart.HtmlObjText)
                         .classed(ViEvac_PolarChart.ClsLegendLabel, true)
-                        .attr("x", (d, i) => (oneLegendItemWidth * i + legendItemRadius))
+                        .attr("x", (d, i) => (d.xPos))
                         .attr('dx', legendItemRadius + this.LegendLabelOffset)
                         .attr("y", legendItemRadius + labelHeight + this.LegendLabelOffset)
                         .attr("dy", labelHeight / 2)
@@ -1296,15 +1319,7 @@ export class ViEvac_PolarChart implements IVisual {
                         .style("font-family", this.settings.legend.fontFamily);
 
                     // if the text is too long we truncate it ...
-                    truncateTextIfNeeded(groupLegendWrapper.selectAll("." + ViEvac_PolarChart.ClsLegendLabel), labelWidth);
-
-                    // and add the tooltip (this seems just to be how the library works ...)
-                    this.tooltipServiceWrapper.addTooltip(
-                        legendSelectionMerged,
-                        (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
-                            return tooltipEvent.data.tooltipInfo;
-                        }
-                    );
+                    truncateTextIfNeeded(groupLegendWrapper.selectAll("." + ViEvac_PolarChart.ClsLegendLabel), labelMaxWidth);
 
                     // at the end increase the idx ..
                     idxLeg++
@@ -1367,7 +1382,7 @@ export class ViEvac_PolarChart implements IVisual {
                         .attr('cx', (d, i) => (oneLegendItemWidth * i + dataCircleR))
                         .attr('cy', legendItemRadius + labelHeight + this.LegendLabelOffset)
                         .attr('r', dataCircleR)
-                        .attr('fill', (d,i) => { 
+                        .attr('fill', (d, i) => {
                             return preparednessScale.scale(d.value)
                         })
                         .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
@@ -1805,26 +1820,6 @@ export class ViEvac_PolarChart implements IVisual {
         return legendData
     }
 
-    private getGroupLegendData(dataCircleR: number): GroupLabelData[] {
-        // so we need to check how many groups there are and get their names and symbols ...
-        let groupLegendData: GroupLabelData[] = []
-        this.chartData.groups.forEach((group, i) => {
-            // start by doing the symbol ...
-            var symbolGenerator = d3.symbol()
-            symbolGenerator
-                .type(d3[ViEvac_PolarChart.d3Symbols[i]])
-                .size(ViEvac_PolarChart.symbolCorrectionFactor * Math.pow(dataCircleR, 2))
-
-            // and do it ...
-            groupLegendData.push({
-                idx: i,
-                name: group,
-                symbol: symbolGenerator()
-            })
-        })
-        return groupLegendData
-    }
-
     private getPreparednessLegendData(preparednessScale: any): any {
         // we first need input min and max ...
         let inputMin: number = null
@@ -1850,7 +1845,7 @@ export class ViEvac_PolarChart implements IVisual {
         // create a datavalues array and then do a tooltip ready dictionary ...
         let legendDataValues: number[] = []
         legendDataValues = [inputMin].concat(preparednessScale.scale.quantiles());
-        
+
         console.log("VALUES", legendDataValues)
 
         // map the value and the tooltipInfo ...

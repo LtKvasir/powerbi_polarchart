@@ -93,6 +93,7 @@ export interface GroupLabelData {
     idx: number;
     name: string;
     symbol: any;
+    xPos: number;
 }
 
 export interface FieldLine {
