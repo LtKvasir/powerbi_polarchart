@@ -171,6 +171,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static DeSelectOpacity: number = 0.2;
 
     private static LegendAttrDistance: number = 5;
+    private static DataLabelDist: number = 10;
 
     // ----------------------------- FOR PROPERTY PANE -----------------------------------
     private static GroupPropertyIdentifier: DataViewObjectPropertyIdentifier = {
@@ -250,6 +251,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static ClsCategorySegment: string = "CatSegment_"
     private static ClsDataRing: string = "DataRing_"
     private static ClsDataCircles: string = "DataPoint"
+    private static ClsDataLabels: string = "DataLabel"
     private static ClsGroupLines: string = "GroupLine"
     private static ClsLegend: string = "Legend";
 
@@ -754,7 +756,7 @@ export class ViEvac_PolarChart implements IVisual {
                             newArc = newArc.replace(/,/g, " ");
 
                             // flip text in the lower half of the radar ...
-                            let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
+                            let lastAngle = (((d.lastIndex + 1 - d.startIndex) / 2 + d.startIndex) * dataPointAngle + angleOffSet) * Math.PI / 180
 
                             if (Math.sin(lastAngle) > 0) {
 
@@ -803,13 +805,13 @@ export class ViEvac_PolarChart implements IVisual {
                         .classed(ViEvac_PolarChart.ClsCategoryAxisLabelTexts, true)
                         .attr(ViEvac_PolarChart.AttrDY, function (d) {
                             // do a different DY if text is turned ...
-                            let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
+                            let lastAngle = (((d.lastIndex + 1 - d.startIndex) / 2 + d.startIndex) * dataPointAngle + angleOffSet) * Math.PI / 180
                             return (Math.sin(lastAngle) > 0) ? -chartDY / 2 : chartDY
                         })
                         .append(ViEvac_PolarChart.HtmlTextPath)
                         .attr("startOffset", function (d) {
                             // if we turn the text we need to turn orientation too ...
-                            let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
+                            let lastAngle = (((d.lastIndex + 1 - d.startIndex) / 2 + d.startIndex) * dataPointAngle + angleOffSet) * Math.PI / 180
                             return (Math.sin(lastAngle) > 0) ? textOrientation[1] : textOrientation[0]
                         })
                         .attr(ViEvac_PolarChart.HtmlPathLink, function (d, i) {
@@ -820,7 +822,7 @@ export class ViEvac_PolarChart implements IVisual {
                         .attr(ViEvac_PolarChart.StFill, this.settings.categoryAxisLabels.color)
                         .style(ViEvac_PolarChart.StTextAnchor, function (d) {
                             // if we turn the text we need to turn orientation too ...
-                            let lastAngle = ((d.lastIndex + 1) * dataPointAngle + angleOffSet) * Math.PI / 180
+                            let lastAngle = (((d.lastIndex + 1 - d.startIndex) / 2 + d.startIndex) * dataPointAngle + angleOffSet) * Math.PI / 180
                             return (Math.sin(lastAngle) > 0) ? textAnchor[1] : textAnchor[0]
                         })
                         .style(ViEvac_PolarChart.StFontSize, this.settings.categoryAxisLabels.fontSize)
@@ -859,8 +861,6 @@ export class ViEvac_PolarChart implements IVisual {
                 dataCircleR = radarHalfR * maxDataFieldAngle / 2 * Math.PI / 180 -
                     this.settings.impact.minPointRadius
             }
-
-
 
             // we start with lines (and later do circles) ...
             // FIX THAT 0 ...
@@ -1072,6 +1072,54 @@ export class ViEvac_PolarChart implements IVisual {
                         (<Event>d3.event).stopPropagation();
                     }
                 })
+
+            // ---------------------------------------------------------------------------------
+            // we might want to do data labels, do we? ...
+            // ---------------------------------------------------------------------------------
+            if (this.settings.dataLabelSettings.show) {
+                // we do need the DOM thingies ...
+                let dataLabels: Selection<DataPoint> = this.mainChart.selectAll("." + ViEvac_PolarChart.ClsDataLabels)
+                let dataLabelsEntered = dataLabels
+                    .data(this.chartData.dataPoints)
+                    .enter()
+                    .append(ViEvac_PolarChart.HtmlObjText)
+                var dataLabelsMerged = dataLabelsEntered.merge(dataLabels)
+
+                dataLabelsMerged
+                    .attr(ViEvac_PolarChart.AttrX, function (d, i) {
+                        return getCartFromPolar(
+                            dataScale(Number(d.values[0].measureValue) + ViEvac_PolarChart.DataLabelDist),
+                            fieldScale(d.uniqueCategory),
+                            datafieldAngle / 2
+                        ).x
+                    })
+                    .attr(ViEvac_PolarChart.AttrY, function (d, i) {
+                        return getCartFromPolar(
+                            dataScale(Number(d.values[0].measureValue) + ViEvac_PolarChart.DataLabelDist),
+                            fieldScale(d.uniqueCategory),
+                            datafieldAngle / 2
+                        ).y
+                    })
+                    .text((d, i) => { 
+                        console.log(d.category[d.category.length-1])
+                        return d.category[d.category.length-1]
+                    })
+                    .style("text-anchor", ViEvac_PolarChart.ConstBegin)
+                    .style("fill", this.settings.dataLabelSettings.fill)
+                    .style("font-size", this.settings.dataLabelSettings.fontSize)
+                    .style("font-family", this.settings.dataLabelSettings.fontFamily)
+                    .attr("class", (d) => {
+                        // add classes: a generic one, and one for segment and ring each ...
+                        let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category.toString().replace(/\s/g, '-')
+                        let clsRing: string = ViEvac_PolarChart.ClsDataRing
+                        clsRing = clsRing + bgSegments.map(s => s.innerRadius).sort((a, b) => { return b - a }).find(function (innerRadius) {
+                            return innerRadius < dataScale(Number(d.values[0].measureValue))
+                        }).toString().replace(/\s/g, '-')
+
+                        return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
+                    })
+                    .classed(ViEvac_PolarChart.ClsDataLabels, true)
+            }
 
             // ---------------------------------------------------------------------------------
             // now ... what about legends? (this is going to hurt)

@@ -50,6 +50,7 @@ export class Settings extends DataViewObjectsParser {
     public dataAxis: DataAxisSettings = new DataAxisSettings();
     public dataAxisLabels: DataAxisLabelsSettings = new DataAxisLabelsSettings();
     public legend: LegendSettings = new LegendSettings();
+    public dataLabelSettings: DataLabelSettings = new DataLabelSettings();
 }
 
 /**
@@ -138,6 +139,16 @@ export class DataAxisLabelsSettings {
     public fontFamily: string = "Arial";
     public color: string = "white";
     public maxTextSymbol: number = 25;
+}
+
+export class DataLabelSettings {
+    public show: boolean = true;
+    public fontSize: number = DefaultFontSize;
+    public fontFamily: string = "Arial";
+    public color: string = "white";
+    public maxTextSymbol: number = 5;
+    public fill: boolean = false;
+    public fillColor: string = "grey";
 }
 
 export class LegendSettings {
