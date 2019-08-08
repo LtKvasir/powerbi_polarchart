@@ -171,7 +171,7 @@ export class ViEvac_PolarChart implements IVisual {
     private static DeSelectOpacity: number = 0.2;
 
     private static LegendAttrDistance: number = 5;
-    private static DataLabelDist: number = 10;
+    private static DataLabelDist: number = 3;
 
     // ----------------------------- FOR PROPERTY PANE -----------------------------------
     private static GroupPropertyIdentifier: DataViewObjectPropertyIdentifier = {
@@ -883,10 +883,11 @@ export class ViEvac_PolarChart implements IVisual {
                     let lastIdx = maxFieldData.category.length - 1
 
                     lineData.push({
-                        minValue: minFieldData.values[0].measureValue,
-                        maxValue: maxFieldData.values[0].measureValue,
+                        minValue: (this.settings.dataAxis.invert) ? minFieldData.values[0].measureValue : maxFieldData.values[0].measureValue,
+                        maxValue: (this.settings.dataAxis.invert) ? maxFieldData.values[0].measureValue : minFieldData.values[0].measureValue,
                         colorGroup: maxFieldData.color,
                         fieldID: maxFieldData.uniqueCategory,
+                        fieldLabel: textLimit(minFieldData.category[minFieldData.category.length-1], self.settings.dataLabelSettings.maxTextSymbol),
                         identity: selectionIdBuilder
                             .withCategory(dataView.categorical.categories[lastIdx], dataView.categorical.categories[lastIdx].values.indexOf(maxFieldData.category[lastIdx]))
                             .createSelectionId()
@@ -1075,12 +1076,13 @@ export class ViEvac_PolarChart implements IVisual {
 
             // ---------------------------------------------------------------------------------
             // we might want to do data labels, do we? ...
+            // we use the line data because this has all we need (1 per group and max Value)
             // ---------------------------------------------------------------------------------
             if (this.settings.dataLabelSettings.show) {
                 // we do need the DOM thingies ...
-                let dataLabels: Selection<DataPoint> = this.mainChart.selectAll("." + ViEvac_PolarChart.ClsDataLabels)
+                let dataLabels: Selection<FieldLine> = this.mainChart.selectAll("." + ViEvac_PolarChart.ClsDataLabels)
                 let dataLabelsEntered = dataLabels
-                    .data(this.chartData.dataPoints)
+                    .data(lineData)
                     .enter()
                     .append(ViEvac_PolarChart.HtmlObjText)
                 var dataLabelsMerged = dataLabelsEntered.merge(dataLabels)
@@ -1090,11 +1092,11 @@ export class ViEvac_PolarChart implements IVisual {
                         // get the radius of the point ...
                         let dataRadius = dataCircleR
                         if (self.settings.impact.show) {
-                            dataRadius = dataCircleR * impactScale(d.values[1].measureValue) + self.settings.impact.minPointRadius
+                            dataRadius = dataCircleR * impactScale(d.minValue) + self.settings.impact.minPointRadius
                         }
                         return getCartFromPolar(
-                            dataScale(Number(d.values[0].measureValue)) + dataRadius + ViEvac_PolarChart.DataLabelDist,
-                            fieldScale(d.uniqueCategory),
+                            dataScale(Number(d.minValue)) + dataRadius + ViEvac_PolarChart.DataLabelDist,
+                            fieldScale(d.fieldID),
                             datafieldAngle / 2
                         ).x
                     })
@@ -1102,44 +1104,50 @@ export class ViEvac_PolarChart implements IVisual {
                         // get the radius of the point ...
                         let dataRadius = dataCircleR
                         if (self.settings.impact.show) {
-                            dataRadius = dataCircleR * impactScale(d.values[1].measureValue) + self.settings.impact.minPointRadius
+                            dataRadius = dataCircleR * impactScale(d.minValue) + self.settings.impact.minPointRadius
                         }
                         return getCartFromPolar(
-                            dataScale(Number(d.values[0].measureValue)) + dataRadius + ViEvac_PolarChart.DataLabelDist,
-                            fieldScale(d.uniqueCategory),
+                            dataScale(Number(d.minValue)) + dataRadius + ViEvac_PolarChart.DataLabelDist,
+                            fieldScale(d.fieldID),
                             datafieldAngle / 2
                         ).y
                     })
                     .attr(ViEvac_PolarChart.AttrDY, function (d, i) {
                         // calculate the text size and then (depending on the offset angle position the thing ...)
-                        let angle = fieldScale(d.uniqueCategory)
+                        let angle = fieldScale(d.fieldID)
                         let labelSize = getTextSize(
-                            [d.category[d.category.length-1]],
+                            [d.fieldLabel],
                             self.settings.dataLabelSettings.fontSize,
                             self.settings.dataLabelSettings.fontFamily
                         )
-                        let offset = (Math.sin(angle * Math.PI / 180) < 0) ? ViEvac_PolarChart.LabelOffsetDY : -1 * ViEvac_PolarChart.LabelOffsetDY
-                        return Math.max(Math.sin(angle * Math.PI / 180) * (-labelSize.height) +
-                            Math.cos(angle * Math.PI / 180) * -(labelSize.width), 0) + offset
+                        return (Math.sin(angle * Math.PI / 180) + 1) * labelSize.height / 2
+                        // return (Math.sin(angle * Math.PI / 180) > 0) ? labelSize.height : 0
                     })
                     .attr(ViEvac_PolarChart.AttrDX, (d,i) => {
-                        let angle = fieldScale(d.uniqueCategory)
-                        return (Math.cos(angle * Math.PI / 180) < 0) ? ViEvac_PolarChart.LabelOffsetDY : -1 * ViEvac_PolarChart.LabelOffsetDY
+                        let angle = fieldScale(d.fieldID)
+                        let labelSize = getTextSize(
+                            [d.fieldLabel],
+                            self.settings.dataLabelSettings.fontSize,
+                            self.settings.dataLabelSettings.fontFamily
+                        )
+                        return Math.cos(angle * Math.PI / 180) * labelSize.width 
+                        // return 0 
                     })
-                    .text((d, i) => { return d.category[d.category.length-1] })
-                    .style("text-anchor", (d, i) => {
-                        let angle = fieldScale(d.uniqueCategory)
-                        return (Math.cos(angle * Math.PI / 180) > 0) ? ViEvac_PolarChart.ConstStart : ViEvac_PolarChart.ConstEnd
-                    })
+                    .text((d, i) => { return d.fieldLabel })
+                    .style("text-anchor", ViEvac_PolarChart.ConstMiddle)
+                    // .style("text-anchor", (d, i) => {
+                    //     let angle = fieldScale(d.fieldID)
+                    //     return (Math.cos(angle * Math.PI / 180) > 0) ? ViEvac_PolarChart.ConstStart : ViEvac_PolarChart.ConstEnd
+                    // })
                     .style("fill", this.settings.dataLabelSettings.fill)
                     .style("font-size", this.settings.dataLabelSettings.fontSize)
                     .style("font-family", this.settings.dataLabelSettings.fontFamily)
                     .attr("class", (d) => {
                         // add classes: a generic one, and one for segment and ring each ...
-                        let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.category.toString().replace(/\s/g, '-')
+                        let clsSegment: string = ViEvac_PolarChart.ClsCategorySegment + d.fieldID.toString().replace(/\s/g, '-')
                         let clsRing: string = ViEvac_PolarChart.ClsDataRing
                         clsRing = clsRing + bgSegments.map(s => s.innerRadius).sort((a, b) => { return b - a }).find(function (innerRadius) {
-                            return innerRadius < dataScale(Number(d.values[0].measureValue))
+                            return innerRadius < dataScale(Number(d.minValue))
                         }).toString().replace(/\s/g, '-')
 
                         return ViEvac_PolarChart.ClsCategoryAxisSegments + " " + clsSegment + " " + clsRing
@@ -1309,7 +1317,7 @@ export class ViEvac_PolarChart implements IVisual {
 
                     // so we need to check how many groups there are and get their names and symbols ...
                     let legendData: GroupLabelData[] = []
-                    let totalXPos: number = legendItemRadius
+                    let totalXPos: number = dataCircleR
                     this.chartData.groups.forEach((group, i) => {
                         // start by doing the symbol ...
                         var symbolGenerator = d3.symbol()
@@ -1324,7 +1332,7 @@ export class ViEvac_PolarChart implements IVisual {
                             symbol: symbolGenerator(),
                             xPos: totalXPos
                         })
-                        totalXPos += 2 * legendItemRadius + ViEvac_PolarChart.LegendAttrDistance + 2 * this.LegendLabelOffset + Math.min(labelMaxWidth, getTextSize(
+                        totalXPos += 2 * dataCircleR + ViEvac_PolarChart.LegendAttrDistance + 2 * this.LegendLabelOffset + Math.min(labelMaxWidth, getTextSize(
                             [group],
                             this.settings.legend.fontSize,
                             this.settings.legend.fontFamily).width
@@ -1365,7 +1373,7 @@ export class ViEvac_PolarChart implements IVisual {
                     } else {
                         legendSelectionMerged
                             .append(ViEvac_PolarChart.HtmlObjCircle)
-                            .attr('cx', (d, i) => (d.xPos + legendItemRadius))
+                            .attr('cx', (d, i) => (d.xPos))
                             .attr('cy', legendItemRadius + labelHeight + this.LegendLabelOffset)
                             .attr('r', dataCircleR)
                             .attr('fill', (d, i) => {
@@ -1383,7 +1391,7 @@ export class ViEvac_PolarChart implements IVisual {
                         .append(ViEvac_PolarChart.HtmlObjText)
                         .classed(ViEvac_PolarChart.ClsLegendLabel, true)
                         .attr("x", (d, i) => (d.xPos))
-                        .attr('dx', legendItemRadius + this.LegendLabelOffset)
+                        .attr('dx', dataCircleR + this.LegendLabelOffset)
                         .attr("y", legendItemRadius + labelHeight + this.LegendLabelOffset)
                         .attr("dy", labelHeight / 2)
                         .text(d => d.name)
@@ -1477,20 +1485,9 @@ export class ViEvac_PolarChart implements IVisual {
                         .style("font-size", this.settings.legend.fontSize)
                         .style("font-family", this.settings.legend.fontFamily);
 
-                    // and add the tooltip (this seems just to be how the library works ...)
-                    this.tooltipServiceWrapper.addTooltip(
-                        legendSelectionMerged,
-                        (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
-                            return tooltipEvent.data.tooltipInfo;
-                        }
-                    );
-
                     // at the end increase the idx ..
                     idxLeg++
                 }
-
-                // -------------------------------------------------------------------------------
-                // prepardness next (and last thankfully) ...
             }
 
             // we want tooltips ...

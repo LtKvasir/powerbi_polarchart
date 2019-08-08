@@ -101,6 +101,7 @@ export interface FieldLine {
     maxValue: powerbi.PrimitiveValue;
     colorGroup: powerbi.PrimitiveValue;
     fieldID: string;
+    fieldLabel: string;
     identity: any;
 }
 

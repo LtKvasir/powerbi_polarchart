@@ -107,7 +107,7 @@
                 }
             }
         },
-        "dataLabels": {
+        "dataLabelSettings": {
             "displayName": "Data Labels",
             "displayNameKey": "Visual_DLabels",
             "properties": {
