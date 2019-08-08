@@ -1087,24 +1087,50 @@ export class ViEvac_PolarChart implements IVisual {
 
                 dataLabelsMerged
                     .attr(ViEvac_PolarChart.AttrX, function (d, i) {
+                        // get the radius of the point ...
+                        let dataRadius = dataCircleR
+                        if (self.settings.impact.show) {
+                            dataRadius = dataCircleR * impactScale(d.values[1].measureValue) + self.settings.impact.minPointRadius
+                        }
                         return getCartFromPolar(
-                            dataScale(Number(d.values[0].measureValue) + ViEvac_PolarChart.DataLabelDist),
+                            dataScale(Number(d.values[0].measureValue)) + dataRadius + ViEvac_PolarChart.DataLabelDist,
                             fieldScale(d.uniqueCategory),
                             datafieldAngle / 2
                         ).x
                     })
                     .attr(ViEvac_PolarChart.AttrY, function (d, i) {
+                        // get the radius of the point ...
+                        let dataRadius = dataCircleR
+                        if (self.settings.impact.show) {
+                            dataRadius = dataCircleR * impactScale(d.values[1].measureValue) + self.settings.impact.minPointRadius
+                        }
                         return getCartFromPolar(
-                            dataScale(Number(d.values[0].measureValue) + ViEvac_PolarChart.DataLabelDist),
+                            dataScale(Number(d.values[0].measureValue)) + dataRadius + ViEvac_PolarChart.DataLabelDist,
                             fieldScale(d.uniqueCategory),
                             datafieldAngle / 2
                         ).y
                     })
-                    .text((d, i) => { 
-                        console.log(d.category[d.category.length-1])
-                        return d.category[d.category.length-1]
+                    .attr(ViEvac_PolarChart.AttrDY, function (d, i) {
+                        // calculate the text size and then (depending on the offset angle position the thing ...)
+                        let angle = fieldScale(d.uniqueCategory)
+                        let labelSize = getTextSize(
+                            [d.category[d.category.length-1]],
+                            self.settings.dataLabelSettings.fontSize,
+                            self.settings.dataLabelSettings.fontFamily
+                        )
+                        let offset = (Math.sin(angle * Math.PI / 180) < 0) ? ViEvac_PolarChart.LabelOffsetDY : -1 * ViEvac_PolarChart.LabelOffsetDY
+                        return Math.max(Math.sin(angle * Math.PI / 180) * (-labelSize.height) +
+                            Math.cos(angle * Math.PI / 180) * -(labelSize.width), 0) + offset
                     })
-                    .style("text-anchor", ViEvac_PolarChart.ConstBegin)
+                    .attr(ViEvac_PolarChart.AttrDX, (d,i) => {
+                        let angle = fieldScale(d.uniqueCategory)
+                        return (Math.cos(angle * Math.PI / 180) < 0) ? ViEvac_PolarChart.LabelOffsetDY : -1 * ViEvac_PolarChart.LabelOffsetDY
+                    })
+                    .text((d, i) => { return d.category[d.category.length-1] })
+                    .style("text-anchor", (d, i) => {
+                        let angle = fieldScale(d.uniqueCategory)
+                        return (Math.cos(angle * Math.PI / 180) > 0) ? ViEvac_PolarChart.ConstStart : ViEvac_PolarChart.ConstEnd
+                    })
                     .style("fill", this.settings.dataLabelSettings.fill)
                     .style("font-size", this.settings.dataLabelSettings.fontSize)
                     .style("font-family", this.settings.dataLabelSettings.fontFamily)
