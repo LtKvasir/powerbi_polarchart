@@ -99,6 +99,7 @@ export interface GroupLabelData {
 export interface FieldLine {
     minValue: powerbi.PrimitiveValue;
     maxValue: powerbi.PrimitiveValue;
+    minImpact: powerbi.PrimitiveValue;
     colorGroup: powerbi.PrimitiveValue;
     fieldID: string;
     fieldLabel: string;

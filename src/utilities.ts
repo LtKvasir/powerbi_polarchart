@@ -325,3 +325,17 @@ export function wrap(text: Selection<D3Element>, width: number): void {
         }
     });
 }
+
+export function dragstarted(d) {
+    d3.select(this).raise().classed("active", true);
+}
+
+export function dragged(d) {
+    d3.select(this)
+        .attr("x", d.x = d3.event.x)
+        .attr("y", d.y = d3.event.y);
+}
+
+export function dragended(d) {
+    d3.select(this).classed("active", false);
+}
