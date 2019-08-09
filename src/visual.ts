@@ -1052,7 +1052,7 @@ export class ViEvac_PolarChart implements IVisual {
                                     util.getAnimationMode(dataCirclesMerged, suppressAnimations, ViEvac_PolarChart.animationDuration)
                                         .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
                                     util.getAnimationMode(groupLinesMerged, suppressAnimations, ViEvac_PolarChart.animationDuration)
-                                        .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
+                                        .style("stroke-opacity", ViEvac_PolarChart.SelectOpacity)
                                 }
                             });
 
