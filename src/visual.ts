@@ -49,7 +49,7 @@ import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifi
 
 import ISelectionIdBuilder = powerbi.visuals.ISelectionIdBuilder;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
-import ISelectionId = powerbi.visuals.ISelectionId;
+import ISelectionId = powerbi.extensibility.ISelectionId;
 
 
 
@@ -120,6 +120,9 @@ export class ViEvac_PolarChart implements IVisual {
     private selectionManager: ISelectionManager;
     private dataSelection: Selection<DataPoint>;
 
+    private groupLinesMerged: Selection<FieldLine>;
+    private dataCirclesMerged: Selection<DataPoint>;
+
 
 
     // ----------------------------- BASIC SETTINGS --------------------------------------
@@ -158,6 +161,9 @@ export class ViEvac_PolarChart implements IVisual {
 
     private static LegendAttrDistance: number = 5;
     private static DataLabelDist: number = 5;
+
+    private suppressAnimations: boolean = false;
+
 
     // ----------------------------- FOR PROPERTY PANE -----------------------------------
     private static GroupPropertyIdentifier: DataViewObjectPropertyIdentifier = {
@@ -492,9 +498,6 @@ export class ViEvac_PolarChart implements IVisual {
             // do selection things ...
             this.selectionManager = this.host.createSelectionManager();
 
-            // and some animation things ...
-            var suppressAnimations: boolean = false;
-
             // set size variables within the class for further use  ...
             this.setChartSizes(options.viewport, this.chartData)
 
@@ -813,6 +816,29 @@ export class ViEvac_PolarChart implements IVisual {
                         })
                         .style(ViEvac_PolarChart.StFontSize, this.settings.categoryAxisLabels.fontSize)
                         .style(ViEvac_PolarChart.StFontFamily, this.settings.categoryAxisLabels.fontFamily)
+                        .on("click", (d) => {
+                            // we do allow selection based on clicking the label ...
+                            const isCtrlPressed: boolean = (d3.event as MouseEvent).ctrlKey;
+
+                            // we do need an array of all datapoints (DOM) of this category
+                            let dataPointSelection = this.mainChart
+                                .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
+                                .filter((dP: DataPoint) => {
+                                    return dP.category[0] == d.category
+                                })
+
+                            // well ... we now need to do a few things: check for already existing
+                            // selections, add new ones, do visual things ...
+                            if (!isCtrlPressed) {
+                                self.selectionManager.clear()
+                            }
+                            dataPointSelection.each((d: DataPoint) => {
+                                self.selectionManager.select(d.identity, true)
+                            })
+
+                            // now we do have selected what we want ... let's visualize them ...
+                            this.visualizeSelection(self.selectionManager.getSelectionIds())
+                        })
                 }
             }
 
@@ -887,10 +913,10 @@ export class ViEvac_PolarChart implements IVisual {
                 let groupLinesEntered = groupLinesData
                     .enter()
                     .append(ViEvac_PolarChart.HtmlObjLine)
-                var groupLinesMerged = groupLinesEntered.merge(groupLines)
+                this.groupLinesMerged = groupLinesEntered.merge(groupLines)
 
                 // do the lines ...
-                groupLinesMerged
+                this.groupLinesMerged
                     .attr(ViEvac_PolarChart.AttrX1, function (d, i) {
                         return util.getCartFromPolar(dataScale(Number(d.maxValue)), fieldScale(d.fieldID), datafieldAngle / 2).x
                     })
@@ -928,12 +954,12 @@ export class ViEvac_PolarChart implements IVisual {
                 let dataCirclesEntered = dataCirclesData
                     .enter()
                     .append(ViEvac_PolarChart.HtmlObjPath)
-                var dataCirclesMerged = dataCirclesEntered.merge(dataCircles)
+                this.dataCirclesMerged = dataCirclesEntered.merge(dataCircles)
 
                 var symbolGenerator = d3.symbol()
 
                 // now we simply draw our data points (as easy as that) ...
-                dataCirclesMerged
+                this.dataCirclesMerged
                     .attr('transform', function (d, i) {
                         let transX = util.getCartFromPolar(dataScale(Number(d.values[0].measureValue)), fieldScale(d.uniqueCategory), datafieldAngle / 2).x
                         let transY = util.getCartFromPolar(dataScale(Number(d.values[0].measureValue)), fieldScale(d.uniqueCategory), datafieldAngle / 2).y
@@ -955,9 +981,9 @@ export class ViEvac_PolarChart implements IVisual {
                 let dataCirclesEntered = dataCirclesData
                     .enter()
                     .append(ViEvac_PolarChart.HtmlObjCircle)
-                var dataCirclesMerged = dataCirclesEntered.merge(dataCircles)
+                this.dataCirclesMerged = dataCirclesEntered.merge(dataCircles)
 
-                dataCirclesMerged
+                this.dataCirclesMerged
                     .attr(ViEvac_PolarChart.AttrCX, function (d, i) {
                         return util.getCartFromPolar(dataScale(Number(d.values[0].measureValue)), fieldScale(d.uniqueCategory), datafieldAngle / 2).x
                     })
@@ -974,7 +1000,7 @@ export class ViEvac_PolarChart implements IVisual {
             }
 
             // add the other stuff and on-click
-            dataCirclesMerged
+            this.dataCirclesMerged
                 .attr('fill', function (d, i) {
                     // either preparedness or groups (or none)
                     let color = (self.settings.preparedness.show) ? preparednessScale.scale(d.values[2].measureValue) : d.color.toString()
@@ -1010,48 +1036,48 @@ export class ViEvac_PolarChart implements IVisual {
                                     // also raise() the selected thingies [which just looks nicer]) ...
 
                                     // lines first ...
-                                    util.getAnimationMode(groupLinesMerged.filter(d => {
+                                    util.getAnimationMode(this.groupLinesMerged.filter(d => {
                                         return !util.isSelectionKeyInArray(
                                             ids,
                                             d.identity,
                                             self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
                                         )
-                                    }), suppressAnimations, ViEvac_PolarChart.animationDuration).style("stroke-opacity", ViEvac_PolarChart.DeSelectOpacity)
+                                    }), this.suppressAnimations, ViEvac_PolarChart.animationDuration).style("stroke-opacity", ViEvac_PolarChart.DeSelectOpacity)
 
-                                    let selectedGroupLines = groupLinesMerged.filter(d => {
+                                    let selectedGroupLines = this.groupLinesMerged.filter(d => {
                                         return util.isSelectionKeyInArray(
                                             ids,
                                             d.identity,
                                             self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
                                         )
                                     }).raise()
-                                    util.getAnimationMode(selectedGroupLines, suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                    util.getAnimationMode(selectedGroupLines, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
                                         .style("stroke-opacity", ViEvac_PolarChart.SelectOpacity)
 
                                     // circles now ...
-                                    util.getAnimationMode(dataCirclesMerged.filter(d => {
+                                    util.getAnimationMode(this.dataCirclesMerged.filter(d => {
                                         return !util.isSelectionKeyInArray(
                                             ids,
                                             d.identity,
                                             self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
                                         )
-                                    }), suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                    }), this.suppressAnimations, ViEvac_PolarChart.animationDuration)
                                         .style("fill-opacity", ViEvac_PolarChart.DeSelectOpacity)
 
-                                    let selectedCircles = dataCirclesMerged.filter(d => {
+                                    let selectedCircles = this.dataCirclesMerged.filter(d => {
                                         return util.isSelectionKeyInArray(
                                             ids,
                                             d.identity,
                                             self.dataView.categorical.categories[self.dataView.categorical.categories.length - 1].source.queryName
                                         )
                                     }).raise()
-                                    util.getAnimationMode(selectedCircles, suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                    util.getAnimationMode(selectedCircles, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
                                         .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
 
                                 } else {
-                                    util.getAnimationMode(dataCirclesMerged, suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                    util.getAnimationMode(this.dataCirclesMerged, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
                                         .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
-                                    util.getAnimationMode(groupLinesMerged, suppressAnimations, ViEvac_PolarChart.animationDuration)
+                                    util.getAnimationMode(this.groupLinesMerged, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
                                         .style("stroke-opacity", ViEvac_PolarChart.SelectOpacity)
                                 }
                             });
@@ -1479,7 +1505,7 @@ export class ViEvac_PolarChart implements IVisual {
             }
 
             // we want tooltips ...
-            this.tooltipServiceWrapper.addTooltip(dataCirclesMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
+            this.tooltipServiceWrapper.addTooltip(this.dataCirclesMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
                 return tooltipEvent.data.tooltipInfo;
             });
 
@@ -1905,8 +1931,6 @@ export class ViEvac_PolarChart implements IVisual {
         let legendDataValues: number[] = []
         legendDataValues = [inputMin].concat(preparednessScale.scale.quantiles());
 
-        console.log("VALUES", legendDataValues)
-
         // map the value and the tooltipInfo ...
         let legendData = legendDataValues.map((value, index) => {
             return {
@@ -1925,4 +1949,61 @@ export class ViEvac_PolarChart implements IVisual {
         // return it we do ...
         return legendData
     }
+
+    /**
+     * Visualizes the selected ids on the radar ...
+     * @param ids 
+     */
+    private visualizeSelection(ids: ISelectionId[]) {
+        // do we have ids at all? ...
+        if (ids.length > 0) {
+            // we do have some selected. Let's do them and the others (we do it this nasty way to be able to
+            // also raise() the selected thingies [which just looks nicer]) ...
+
+            // lines first ...
+            util.getAnimationMode(this.groupLinesMerged.filter(d => {
+                return !util.isSelectionKeyInArray(
+                    ids,
+                    d.identity,
+                    this.dataView.categorical.categories[this.dataView.categorical.categories.length - 1].source.queryName
+                )
+            }), this.suppressAnimations, ViEvac_PolarChart.animationDuration).style("stroke-opacity", ViEvac_PolarChart.DeSelectOpacity)
+
+            let selectedGroupLines = this.groupLinesMerged.filter(d => {
+                return util.isSelectionKeyInArray(
+                    ids,
+                    d.identity,
+                    this.dataView.categorical.categories[this.dataView.categorical.categories.length - 1].source.queryName
+                )
+            }).raise()
+            util.getAnimationMode(selectedGroupLines, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
+                .style("stroke-opacity", ViEvac_PolarChart.SelectOpacity)
+
+            // circles now ...
+            util.getAnimationMode(this.dataCirclesMerged.filter(d => {
+                return !util.isSelectionKeyInArray(
+                    ids,
+                    d.identity,
+                    this.dataView.categorical.categories[this.dataView.categorical.categories.length - 1].source.queryName
+                )
+            }), this.suppressAnimations, ViEvac_PolarChart.animationDuration)
+                .style("fill-opacity", ViEvac_PolarChart.DeSelectOpacity)
+
+            let selectedCircles = this.dataCirclesMerged.filter(d => {
+                return util.isSelectionKeyInArray(
+                    ids,
+                    d.identity,
+                    this.dataView.categorical.categories[this.dataView.categorical.categories.length - 1].source.queryName
+                )
+            }).raise()
+            util.getAnimationMode(selectedCircles, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
+                .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
+
+        } else {
+            util.getAnimationMode(this.dataCirclesMerged, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
+                .style("fill-opacity", ViEvac_PolarChart.SelectOpacity)
+            util.getAnimationMode(this.groupLinesMerged, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
+                .style("stroke-opacity", ViEvac_PolarChart.SelectOpacity)
+        }
+    };
 }
