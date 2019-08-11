@@ -104,6 +104,15 @@
                     "type": {
                         "bool": true
                     }
+                },
+                "deSelectOpacity": {
+                    "displayName": "Deselect Opacity",
+                    "displayNameKey": "Visual_deSelectOpacity",
+                    "description": "Opacity for items not selected",
+                    "descriptionKey": "Visual_deSelectOpacity",
+                    "type": {
+                        "numeric": true
+                    }
                 }
             }
         },

@@ -62,6 +62,7 @@ export class dataSettings {
     public stroke: string = "#white";
     public strokeWidth: number = 1;
     public fillArea: boolean = true;
+    public deSelectOpacity: number = 0.5;
 }
 
  export class InnerCircleSettings {
