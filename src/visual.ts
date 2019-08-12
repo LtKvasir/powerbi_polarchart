@@ -818,16 +818,22 @@ export class ViEvac_PolarChart implements IVisual {
                         .style(ViEvac_PolarChart.StFontSize, this.settings.categoryAxisLabels.fontSize)
                         .style(ViEvac_PolarChart.StFontFamily, this.settings.categoryAxisLabels.fontFamily)
                         .on("click", (d) => {
-                            // we do need an array of all datapoints (DOM) of this category
-                            let dataPointSelection = this.mainChart
-                                .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
-                                .filter((dP: DataPoint) => {
-                                    return dP.category[0] == d.category
-                                })
+                            // Allow selection only if the visual is rendered in a view that supports interactivity (e.g. Report)
+                            if (this.host.allowInteractions) {
+                                // we do need an array of all datapoints (DOM) of this category
+                                let dataPointSelection = this.mainChart
+                                    .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
+                                    .filter((dP: DataPoint) => {
+                                        return dP.category[0] == d.category
+                                    })
 
-                            // now we do have selected what we want ... let's visualize them ...
-                            this.prepareSelection(dataPointSelection)
-                            this.visualizeSelection(self.selectionManager.getSelectionIds())
+                                // now we do have selected what we want ... let's visualize them ...
+                                this.prepareSelection(dataPointSelection)
+                                this.visualizeSelection(self.selectionManager.getSelectionIds())
+                            }
+
+                            // stop D3 from doing something (don't know what) ...
+                            (<Event>d3.event).stopPropagation();
                         })
                 }
             }
@@ -1209,16 +1215,22 @@ export class ViEvac_PolarChart implements IVisual {
                         .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
                         .style('stroke', this.settings.dataBasics.stroke)
                         .on("click", (d) => {
-                            // we do need an array of all datapoints (DOM) of this category
-                            let dataPointSelection = this.mainChart
-                                .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
-                                .filter((dP: DataPoint) => {
-                                    return (dP.values[1].measureValue >= d.min && dP.values[1].measureValue <= d.max)
-                                })
+                            // Allow selection only if the visual is rendered in a view that supports interactivity (e.g. Report)
+                            if (this.host.allowInteractions) {
+                                // we do need an array of all datapoints (DOM) of this category
+                                let dataPointSelection = this.mainChart
+                                    .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
+                                    .filter((dP: DataPoint) => {
+                                        return (dP.values[1].measureValue >= d.min && dP.values[1].measureValue <= d.max)
+                                    })
 
-                            // now we do have selected what we want ... let's visualize them ...
-                            this.prepareSelection(dataPointSelection)
-                            this.visualizeSelection(self.selectionManager.getSelectionIds())
+                                // now we do have selected what we want ... let's visualize them ...
+                                this.prepareSelection(dataPointSelection)
+                                this.visualizeSelection(self.selectionManager.getSelectionIds())
+                            }
+
+                            // stop D3 from doing something (don't know what) ...
+                            (<Event>d3.event).stopPropagation();
                         })
 
                     // add some text we do ...
@@ -1340,16 +1352,22 @@ export class ViEvac_PolarChart implements IVisual {
                             .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
                             .style('stroke', this.settings.dataBasics.stroke)
                             .on("click", (d) => {
-                                // we do need an array of all datapoints (DOM) of this category
-                                let dataPointSelection = this.mainChart
-                                    .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
-                                    .filter((dP: DataPoint) => {
-                                        return (dP.group == d.name)
-                                    })
+                                // Allow selection only if the visual is rendered in a view that supports interactivity (e.g. Report)
+                                if (this.host.allowInteractions) {
+                                    // we do need an array of all datapoints (DOM) of this category
+                                    let dataPointSelection = this.mainChart
+                                        .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
+                                        .filter((dP: DataPoint) => {
+                                            return (dP.group == d.name)
+                                        })
 
-                                // now we do have selected what we want ... let's visualize them ...
-                                this.prepareSelection(dataPointSelection)
-                                this.visualizeSelection(self.selectionManager.getSelectionIds())
+                                    // now we do have selected what we want ... let's visualize them ...
+                                    this.prepareSelection(dataPointSelection)
+                                    this.visualizeSelection(self.selectionManager.getSelectionIds())
+                                }
+
+                                // stop D3 from doing something (don't know what) ...
+                                (<Event>d3.event).stopPropagation();
                             })
                     } else {
                         legendSelectionMerged
@@ -1366,52 +1384,58 @@ export class ViEvac_PolarChart implements IVisual {
                             .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
                             .style('stroke', this.settings.dataBasics.stroke)
                             .on("click", (d) => {
-                                // we do need an array of all datapoints (DOM) of this category
-                                let dataPointSelection = this.mainChart
-                                    .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
-                                    .filter((dP: DataPoint) => {
-                                        return (dP.group == d.name)
+                                // Allow selection only if the visual is rendered in a view that supports interactivity (e.g. Report)
+                                if (this.host.allowInteractions) {
+                                    // we do need an array of all datapoints (DOM) of this category
+                                    let dataPointSelection = this.mainChart
+                                        .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
+                                        .filter((dP: DataPoint) => {
+                                            return (dP.group == d.name)
+                                        })
+
+                                    // now we do have selected what we want ... let's visualize them ...
+                                    this.prepareSelection(dataPointSelection)
+                                    let ids = self.selectionManager.getSelectionIds()
+
+                                    // we need to do it by hand this time (circles) and we will deselect all lines ...
+                                    // we also need to know what column the groups are first ...
+                                    let grpIdx = dataView.metadata.columns.map(v => v.roles).findIndex(role => {
+                                        return ("Groups" in role)
                                     })
 
-                                // now we do have selected what we want ... let's visualize them ...
-                                this.prepareSelection(dataPointSelection)
-                                let ids = self.selectionManager.getSelectionIds()
+                                    // the group lines ...
+                                    this.drawSelection(
+                                        ids,
+                                        this.groupLinesMerged,
+                                        this.dataView.metadata.columns[grpIdx].queryName,
+                                        "stroke-opacity",
+                                        this.settings.dataBasics.deSelectOpacity.toString(),
+                                        this.settings.dataBasics.deSelectOpacity.toString()
+                                    )
 
-                                // we need to do it by hand this time (circles) and we will deselect all lines ...
-                                // we also need to know what column the groups are first ...
-                                let grpIdx = dataView.metadata.columns.map(v => v.roles).findIndex(role => {
-                                    return ("Groups" in role)
-                                })
+                                    // the datapoints ...
+                                    this.drawSelection(
+                                        ids,
+                                        this.dataCirclesMerged,
+                                        this.dataView.metadata.columns[grpIdx].queryName,
+                                        "opacity",
+                                        ViEvac_PolarChart.SelectOpacity.toString(),
+                                        this.settings.dataBasics.deSelectOpacity.toString()
+                                    )
 
-                                // the group lines ...
-                                this.drawSelection(
-                                    ids,
-                                    this.groupLinesMerged,
-                                    this.dataView.metadata.columns[grpIdx].queryName,
-                                    "stroke-opacity",
-                                    this.settings.dataBasics.deSelectOpacity.toString(),
-                                    this.settings.dataBasics.deSelectOpacity.toString()
-                                )
+                                    // the labels ...
+                                    this.drawSelection(
+                                        ids,
+                                        this.dataLabelsMerged,
+                                        this.dataView.metadata.columns[grpIdx].queryName,
+                                        "opacity",
+                                        ViEvac_PolarChart.SelectOpacity.toString(),
+                                        this.settings.dataBasics.deSelectOpacity.toString()
+                                    )
+                                }
 
-                                // the datapoints ...
-                                this.drawSelection(
-                                    ids,
-                                    this.dataCirclesMerged,
-                                    this.dataView.metadata.columns[grpIdx].queryName,
-                                    "opacity",
-                                    ViEvac_PolarChart.SelectOpacity.toString(),
-                                    this.settings.dataBasics.deSelectOpacity.toString()
-                                )
-
-                                // the labels ...
-                                this.drawSelection(
-                                    ids,
-                                    this.dataLabelsMerged,
-                                    this.dataView.metadata.columns[grpIdx].queryName,
-                                    "opacity",
-                                    ViEvac_PolarChart.SelectOpacity.toString(),
-                                    this.settings.dataBasics.deSelectOpacity.toString()
-                                )
+                                // stop D3 from doing something (don't know what) ...
+                                (<Event>d3.event).stopPropagation();
                             })
                     }
 
@@ -1498,6 +1522,18 @@ export class ViEvac_PolarChart implements IVisual {
                         })
                         .style('stroke-width', this.settings.dataBasics.strokeWidth + "px")
                         .style('stroke', this.settings.dataBasics.stroke)
+                        .on('click', (d, i) => {
+                            // we do need an array of all datapoints (DOM) of this category
+                            let dataPointSelection = this.mainChart
+                                .selectAll("." + ViEvac_PolarChart.ClsDataCircles)
+                                .filter((dP: DataPoint) => {
+                                    return (dP.values[2].measureValue >= d.min && dP.values[2].measureValue <= d.max)
+                                })
+
+                            // now we do have selected what we want ... let's visualize them ...
+                            this.prepareSelection(dataPointSelection)
+                            this.visualizeSelection(self.selectionManager.getSelectionIds())
+                        })
 
                     // add some text we do ...
                     legendSelectionMerged
@@ -1514,16 +1550,20 @@ export class ViEvac_PolarChart implements IVisual {
                         .style("font-size", this.settings.legend.fontSize)
                         .style("font-family", this.settings.legend.fontFamily);
 
+                    // we want tooltips ...
+                    this.tooltipServiceWrapper.addTooltip(legendSelectionMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
+                        return tooltipEvent.data.tooltipInfo;
+                    })
+
                     // at the end increase the idx ..
                     idxLeg++
                 }
+
+                // we want tooltips ...
+                this.tooltipServiceWrapper.addTooltip(this.dataCirclesMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
+                    return tooltipEvent.data.tooltipInfo;
+                })
             }
-
-            // we want tooltips ...
-            this.tooltipServiceWrapper.addTooltip(this.dataCirclesMerged, (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
-                return tooltipEvent.data.tooltipInfo;
-            });
-
 
             // remove after finish ...
             console.log("ChartData", this.chartData)
@@ -1952,6 +1992,8 @@ export class ViEvac_PolarChart implements IVisual {
         let legendData = legendDataValues.map((value, index) => {
             return {
                 value: value,
+                min: value,
+                max: (legendDataValues[index + 1] == null) ? inputMax : legendDataValues[index + 1],
                 tooltipInfo: [{
                     displayName: `Min value`,
                     value: value && typeof value.toFixed === "function" ? value.toFixed(2) : this.chartData.categoryValueFormatter.format(value)
@@ -2045,9 +2087,11 @@ export class ViEvac_PolarChart implements IVisual {
                     d.identity,
                     key
                 )
-            }).raise()
+            })
             util.getAnimationMode(selectedItems, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
                 .style(attribute, valSelected)
+
+            selectedItems.raise()
         } else {
             // nothing is selected. We draw everything in selected mode ...
             util.getAnimationMode(domSelection, this.suppressAnimations, ViEvac_PolarChart.animationDuration)
