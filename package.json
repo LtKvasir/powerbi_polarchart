@@ -3,7 +3,7 @@
     "name": "Paul Bader",
     "email": "mail@paulbader.at"
   },
-  "name": "ViEvac_PolarChart",
+  "name": "vievac_polarchart",
   "scripts": {
     "pbiviz": "pbiviz",
     "start": "pbiviz start --target es6",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "babel": "^7.4.5",
-    "core-js": "^3.1.4",
+    "core-js": "^3.2.1",
     "css-loader": "^2.1.0",
     "d3": "5.7.0",
     "extra-watch-webpack-plugin": "^1.0.3",
@@ -22,6 +22,7 @@
     "jquery": "3.2.0",
     "json-loader": "^0.5.7",
     "less-loader": "^4.1.0",
+    "polyfill": "^0.1.0",
     "powerbi-visuals-webpack-plugin": "^2.0.1",
     "webpack-visualizer-plugin": "^0.1.11"
   },

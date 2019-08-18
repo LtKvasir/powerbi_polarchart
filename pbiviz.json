@@ -1,10 +1,10 @@
 {
     "visual": {
-        "name": "powerbipolarchart",
-        "displayName": "powerbi_polarchart",
+        "name": "vievac_polarchart",
+        "displayName": "vievac_polarchart",
         "guid": "PowerBi_PolarChart",
         "visualClassName": "ViEvac_PolarChart",
-        "version": "0.3.0",
+        "version": "1.0.0",
         "description": "A PowerBi Visual to display data in a polar plot",
         "supportUrl": "www.paulbader.at",
         "gitHubUrl": "https://github.com/LtKvasir/powerbi_polarchart"
@@ -15,7 +15,7 @@
         "email": "mail@paulbader.at"
     },
     "assets": {
-        "icon": "assets/icon.png"
+        "icon": "assets/myIcon.png"
     },
     "externalJS": null,
     "style": "style/visual.less",

@@ -103,6 +103,7 @@ export class preparednessSettings {
 
 export class categoryAxisSettings {
     public show: boolean = true;
+    public divideSingle: boolean = false;
     public angleOffSet: number = -90;
     public stroke: string = defaultColor;
     public strokeWidth: number = 1;

@@ -1,5 +1,5 @@
 {
-    "version": "0.3.0",
+    "version": "1.0.0",
     "author": {"name":"Paul Bader","email":"mail@paulbader.at"},
     "resources": [
         {
@@ -8,7 +8,7 @@
             "file": "resources/PowerBi_PolarChart.pbiviz.json"
         }
     ],
-    "visual": {"name":"powerbipolarchart","displayName":"powerbi_polarchart","guid":"PowerBi_PolarChart","visualClassName":"ViEvac_PolarChart","version":"0.3.0","description":"A PowerBi Visual to display data in a polar plot","supportUrl":"www.paulbader.at","gitHubUrl":"https://github.com/LtKvasir/powerbi_polarchart"},
+    "visual": {"name":"vievac_polarchart","displayName":"vievac_polarchart","guid":"PowerBi_PolarChart","visualClassName":"ViEvac_PolarChart","version":"1.0.0","description":"A PowerBi Visual to display data in a polar plot","supportUrl":"www.paulbader.at","gitHubUrl":"https://github.com/LtKvasir/powerbi_polarchart"},
     "metadata": {
         "pbivizjson": {
             "resourceId": "rId0"
