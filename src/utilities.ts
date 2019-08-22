@@ -43,6 +43,8 @@ import LabelLayoutStrategy = axis.LabelLayoutStrategy;
 import TextMeasurementService = textMeasurementService.textMeasurementService;
 
 import DataViewObjects = powerbi.DataViewObjects;
+import DataViewObject = powerbi.DataViewObject;
+import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
 import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
 
 import ISelectionId = powerbi.extensibility.ISelectionId;
@@ -204,39 +206,6 @@ export function isSelectionKeyInArray(selectionIds: ISelectionIdVisual[], select
         return id['dataMap'][source][0] == selectionId['dataMap'][source][0]
     })
     return isIncluded.some(v => v == true)
-}
-
-export function syncSelectionState(
-    selection: Selection<DataPoint>,
-    selectionIds: ISelectionId[]
-): void {
-    //     if (!selection || !selectionIds) {
-    //         return;
-    //     }
-
-    //     if (!selectionIds.length) {
-    //         selection.style({
-    //             "fill-opacity": null,
-    //             "stroke-opacity": null,
-    //         });
-
-    //         return;
-    //     }
-
-    //     const self: this = this;
-
-    //     selection.each(function (barDataPoint: BarChartDataPoint) {
-    //         const isSelected: boolean = self.isSelectionIdInArray(selectionIds, barDataPoint.selectionId);
-
-    //         const opacity: number = isSelected
-    //             ? BarChart.Config.solidOpacity
-    //             : BarChart.Config.transparentOpacity;
-
-    //         d3.select(this).style({
-    //             "fill-opacity": opacity,
-    //             "stroke-opacity": opacity,
-    //         });
-    //     });
 }
 
 export function isSelectionIdInArray(selectionIds: ISelectionId[], selectionId: ISelectionId): boolean {
@@ -422,4 +391,75 @@ export function isSelectionEqual(currentSelection: ISelectionId[], ids: ISelecti
     })
 
     return true
+}
+
+/**
+ * Extracts an object from meta data of datav view
+ * @param {DataViewObjects} objects - Map of defined objects.
+ * @param {string} objectName       - Name of desired object.
+ * @param {string} propertyName     - Name of desired property.
+ * @param {T} defaultValue          - Default value of desired property.
+ */
+export function getValue<T>(objects: DataViewObjects, objectName: string, propertyName: string, defaultValue: T): T {
+    if (objects) {
+        let object = objects[objectName];
+        if (object) {
+            let property: T = <T>object[propertyName];
+            if (property !== undefined) {
+                return property;
+            }
+        }
+    }
+    return defaultValue;
+}
+
+/**
+ * Gets a color for a series ...
+ * @param properties 
+ * @param defaultColor 
+ * @param objects 
+ * @param measureKey 
+ */
+export function getColor(
+    properties: DataViewObjectPropertyIdentifier,
+    defaultColor: string,
+    objects: DataViewObjects,
+    measureKey: string
+): string {
+
+    const colorHelper: ColorHelper = new ColorHelper(
+        this.colorPalette,
+        properties,
+        defaultColor
+    );
+
+    return colorHelper.getColorForSeriesValue(objects, measureKey, "foreground");
+}
+
+/**
+ * Gets property value for a particular object in a category.
+ *
+ * @function
+ * @param {DataViewCategoryColumn} category - List of category objects.
+ * @param {number} index                    - Index of category object.
+ * @param {string} objectName               - Name of desired object.
+ * @param {string} propertyName             - Name of desired property.
+ * @param {T} defaultValue                  - Default value of desired property.
+ */
+export function getCategoricalObjectValue<T>(category: DataViewCategoryColumn, index: number, objectName: string, propertyName: string, defaultValue: T): T {
+    let categoryObjects = category.objects;
+
+    if (categoryObjects) {
+        let categoryObject: DataViewObject = categoryObjects[index];
+        if (categoryObject) {
+            let object = categoryObject[objectName];
+            if (object) {
+                let property: T = object[propertyName];
+                if (property !== undefined) {
+                    return property;
+                }
+            }
+        }
+    }
+    return defaultValue;
 }

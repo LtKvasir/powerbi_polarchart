@@ -322,12 +322,13 @@ export class ViEvac_PolarChart implements IVisual {
 
                 // colors are difficult. We use some helpers and things ...
                 let initialColor = this.colorPalette.getColor(<string>groupArray.source.groupName).value;
-                // let parsedColor: string = this.getColor(
-                //     ViEvac_PolarChart.GroupPropertyIdentifier,
-                //     initialColor,
-                //     dataView.metadata.objects,
-                //     name
-                // );
+
+                let parsedColor = util.getColor(
+                    ViEvac_PolarChart.GroupPropertyIdentifier,
+                    initialColor,
+                    dataView.metadata.objects,
+                    name
+                )
 
                 // now we assemble the temporary array. We do use the dataPoint interface for convenience issues 
                 // and fill not used thingies with empties ...
@@ -1695,9 +1696,10 @@ export class ViEvac_PolarChart implements IVisual {
         const instanceEnumeration: VisualObjectInstanceEnumeration =
             Settings.enumerateObjectInstances(settings, options);
 
-        // if (options.objectName === ViEvac_PolarChart.GroupPropertyIdentifier.objectName) {
-        //     this.enumerateColors(this.chartData.groups, instanceEnumeration);
-        // }
+        if (options.objectName === ViEvac_PolarChart.GroupPropertyIdentifier.objectName) {
+            console.log("FLAG", true)
+            this.enumerateColors(this.chartData.groups, instanceEnumeration);
+        }
 
         // return (instanceEnumeration as VisualObjectInstanceEnumerationObject).instances || [];
         return instanceEnumeration || [];
@@ -1708,33 +1710,61 @@ export class ViEvac_PolarChart implements IVisual {
      * @param groups 
      * @param instanceEnumeration 
      */
-    // private enumerateColors(groups: string[], instanceEnumeration: VisualObjectInstanceEnumeration): void {
-    //     if (groups && groups.length > 0) {
-    //         // if there is more than one group we iterate it ...
-    //         groups.forEach((group) => {
-    //             // for the properties (Settings) we need a display name and the identity (bc. it is dynamically to be identified)
-    //             const displayName: string = group.toString();
-    //             const identity: ISelectionId = group.identity as ISelectionId;
+    private enumerateColors(groups: string[], instanceEnumeration: VisualObjectInstanceEnumeration): void {
+        if (groups && groups.length > 0) {
 
-    //             console.log("GROUP-KEY", identity.getKey())
-    //             console.log("NORMAL", ColorHelper.normalizeSelector(identity.getSelector(), false))
-    //             // debugger;
+            var metadataGroupColumns: powerbi.DataViewMetadataColumn[] = this.dataView.metadata.columns.filter(function (d) {
+                if (d.groupName) {
+                    return true
+                }
+            })
 
-    //             this.addAnInstanceToEnumeration(instanceEnumeration, {
-    //                 displayName,
-    //                 objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
-    //                 // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
-    //                 selector: group.groupId,
-    //                 properties: {
-    //                     fill: { solid: { color: group.color } }
-    //                 }
-    //             });
-    //         });
+            // // if there is more than one group we iterate it ...
+            groups.forEach((group) => {
+                // for the properties (Settings) we need a display name and the identity (bc. it is dynamically to be identified)
+                const displayName: string = group.toString();
+                // const identity: ISelectionId = group.identity as ISelectionId;
 
-    //         console.log("INSTANCE", instanceEnumeration)
+                this.addAnInstanceToEnumeration(instanceEnumeration, {
+                    displayName,
+                    objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
+                    // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
+                    selector: { metadata: metadataGroupColumns.find(d => {
+                        if (d.groupName == group) { return true}
+                    }).queryName},
+                    properties: {
+                        fill: { solid: { color: 'FFF' } }
+                    }
+                });
+            });
 
-    //     }
-    // }
+            // console.log("INSTANCE", instanceEnumeration)
+
+            // for (var i = 0; i < metadataGroupColumns.length; i++) {
+            //     var currentColumn: powerbi.DataViewMetadataColumn = metadataGroupColumns[i];
+            //     objectEnumeration.push({
+            //         objectName: objectName,
+            //         displayName: currentColumn.displayName,
+            //         properties: {
+            //             fontBold: util.getValue<boolean>(currentColumn.objects, objectName, "fontBold", false)
+            //         },
+            //         selector: { metadata: currentColumn.queryName }
+            //     });
+
+            //     this.addAnInstanceToEnumeration(instanceEnumeration, {
+            //         displayName,
+            //         objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
+            //         // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
+            //         selector: group.groupId,
+            //         properties: {
+            //             fill: { solid: { color: group.color } }
+            //         }
+            //     });
+            // };
+            console.log("INSTANCE", instanceEnumeration)
+        }
+        console.log(metadataGroupColumns)
+    }
 
     /**
      * Adds an instance to the property enumeration
@@ -1753,22 +1783,6 @@ export class ViEvac_PolarChart implements IVisual {
         } else {
             (instanceEnumeration as VisualObjectInstance[]).push(instance);
         }
-    }
-
-    private getColor(
-        properties: DataViewObjectPropertyIdentifier,
-        defaultColor: string,
-        objects: DataViewObjects,
-        measureKey: string
-    ): string {
-
-        const colorHelper: ColorHelper = new ColorHelper(
-            this.colorPalette,
-            properties,
-            defaultColor
-        );
-
-        return colorHelper.getColorForSeriesValue(objects, measureKey, "foreground");
     }
 
     /**
