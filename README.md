@@ -42,7 +42,6 @@ Honestly, not even me who coded this visual can think of a case where using all 
 
 # Known Bugs
 - [ ] Loading the visual with filtered groups (i.e show 2 of 4 groups) and extending the filter afterwards (i.e. show 4 of 4 groups) will lead to multiple groups having the same color
-- [ ] won't work without a second measure for "Impact"
 
 # Features to be added (sometime)
 
