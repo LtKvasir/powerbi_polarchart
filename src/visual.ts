@@ -1711,72 +1711,42 @@ export class ViEvac_PolarChart implements IVisual {
      */
     private enumerateColors(groups: string[], instanceEnumeration: VisualObjectInstanceEnumeration): void {
         if (groups && groups.length > 0) {
-            const categorical = this.dataView.categorical
-            let metadataGroupColumns = this.dataView.metadata.columns.filter(d => {
-                return "groupName" in d
+
+            let categorical = this.dataView.categorical
+
+            var metadataGroupColumns: powerbi.DataViewMetadataColumn[] = this.dataView.metadata.columns.filter(function (d) {
+                if (d.groupName) {
+                    return true
+                }
             })
 
             // // if there is more than one group we iterate it ...
             groups.forEach((group) => {
-                const selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
-                let i = categorical.values.map(d => d.source.groupName).indexOf(group)
+                // for the properties (Settings) we need a display name and the 
+                // identity (bc. it is dynamically to be identified)
+                const displayName: string = group.toString();
 
-                let identity: any = selectionIdBuilder.withSeries(
-                    categorical.values, categorical.values[i]
-                ).createSelectionId();
-                // let identity: any = selectionIdBuilder.withCategory(
-                //     categorical.categories[0], 1
-                // ).createSelectionId();
+                let columnIdx = categorical.values.findIndex( d => {
+                    return (d.source.groupName == group)
+                })
 
-                // for the properties (Settings) we need a display name and the identity (bc. it is dynamically to be identified)
+                let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
+                let identity: any = selectionIdBuilder
+                    .withSeries(categorical.values, categorical.values[columnIdx])
+                    .createSelectionId()
 
                 // const identity: ISelectionId = group.identity as ISelectionId;
                 this.addAnInstanceToEnumeration(instanceEnumeration, {
-                    displayName: group.toString(),
-                    objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
+                    displayName: displayName,
+                    objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName,
+                    // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
+                    // selector: { metadata: currentColumn.queryName },
                     selector: identity.getSelector(),
-                    // selector: "test",
-                    // selector: {
-                    //     metadata: metadataGroupColumns.find(d => {
-                    //         if (d.groupName == group) { return true }
-                    //     }).queryName
-                    // },
                     properties: {
                         fill: { solid: { color: 'FFF' } }
                     }
                 });
-
-                console.log("FLAG -----------------------------")
-                console.log("ID", identity)
-                console.log("SEL", metadataGroupColumns.find(d => {
-                    if (d.groupName == group) { return true }
-                }).queryName)
-            });
-
-            // categorical.values.forEach((dataValue, i) => {
-            //     // create an identity for groups ...
-            //     const selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
-
-            //     let identity: any = selectionIdBuilder.withSeries(
-            //         categorical.values, categorical.values[i]
-            //     ).createSelectionId();
-
-
-            //     const displayName: string = dataValue.source.groupName.toString()
-
-
-            //     this.addAnInstanceToEnumeration(instanceEnumeration, {
-            //         displayName,
-            //         objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
-            //         // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
-            //         // selector: identity.getSelector(),
-            //         selector: { metadata: "test" },
-            //         properties: {
-            //             fill: { solid: { color: 'FFF' } }
-            //         }
-            //     });
-            // })
-            console.log("INSTANCE", instanceEnumeration)
+            })
         }
     }
 

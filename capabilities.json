@@ -35,8 +35,8 @@
                         "by": "Groups",
                         "select": [
                             {
-                                "bind": {
-                                    "to": "Values"
+                                "for": {
+                                    "in": "Values"
                                 }
                             }
                         ]
