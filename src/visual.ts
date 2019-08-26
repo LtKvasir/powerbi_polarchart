@@ -1723,7 +1723,8 @@ export class ViEvac_PolarChart implements IVisual {
 
             // // if there is more than one group we iterate it ...
             groups.forEach((group) => {
-                // for the properties (Settings) we need a display name and the identity (bc. it is dynamically to be identified)
+                // for the properties (Settings) we need a display name and the 
+                // identity (bc. it is dynamically to be identified)
                 const displayName: string = group.toString();
 
                 let columnIdx = categorical.values.findIndex( d => {
@@ -1735,11 +1736,6 @@ export class ViEvac_PolarChart implements IVisual {
                     .withSeries(categorical.values, categorical.values[columnIdx])
                     .createSelectionId()
 
-
-                let currentColumn: powerbi.DataViewMetadataColumn = metadataGroupColumns.find(d => {
-                    if (d.groupName == group) { return true }
-                })
-
                 this.addAnInstanceToEnumeration(instanceEnumeration, {
                     displayName: displayName,
                     objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName,
@@ -1750,21 +1746,7 @@ export class ViEvac_PolarChart implements IVisual {
                         fill: { solid: { color: 'FFF' } }
                     }
                 });
-            });
-
-            // console.log("INSTANCE", instanceEnumeration)
-
-            //     this.addAnInstanceToEnumeration(instanceEnumeration, {
-            //         displayName,
-            //         objectName: ViEvac_PolarChart.GroupPropertyIdentifier.objectName.toString(),
-            //         // selector: ColorHelper.normalizeSelector(identity.getSelector(), false),
-            //         selector: group.groupId,
-            //         properties: {
-            //             fill: { solid: { color: group.color } }
-            //         }
-            //     });
-            // };
-            console.log("INSTANCE", instanceEnumeration)
+            })
         }
     }
 
