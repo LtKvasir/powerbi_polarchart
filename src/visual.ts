@@ -323,11 +323,18 @@ export class ViEvac_PolarChart implements IVisual {
                 // colors are difficult. We use some helpers and things ...
                 let initialColor = this.colorPalette.getColor(<string>groupArray.source.groupName).value;
 
-                let parsedColor = util.getColor(
+                // let parsedColor = util.getColor(
+                //     ViEvac_PolarChart.GroupPropertyIdentifier,
+                //     initialColor,
+                //     dataView.metadata.objects,
+                //     name
+                // )
+
+                let parsedColor = util.getSeriesColor(
                     ViEvac_PolarChart.GroupPropertyIdentifier,
                     initialColor,
-                    dataView.metadata.objects,
-                    name
+                    dataView.categorical.values,
+                    groupIdx
                 )
 
                 // now we assemble the temporary array. We do use the dataPoint interface for convenience issues 
@@ -340,7 +347,7 @@ export class ViEvac_PolarChart implements IVisual {
                         measureName: <string>groupArray.source.displayName,
                         measureValue: <string>groupArray.values[index]
                     }],
-                    color: initialColor,
+                    color: parsedColor,
                     identity: identity,
                     selected: false
                 })
@@ -1730,6 +1737,10 @@ export class ViEvac_PolarChart implements IVisual {
                     return (d.source.groupName == group)
                 })
 
+                let dp = this.chartData.dataPoints.find(d => {
+                    return d.group == group
+                })
+
                 let selectionIdBuilder: ISelectionIdBuilder = this.host.createSelectionIdBuilder();
                 let identity: any = selectionIdBuilder
                     .withSeries(categorical.values, categorical.values[columnIdx])
@@ -1743,7 +1754,7 @@ export class ViEvac_PolarChart implements IVisual {
                     // selector: { metadata: currentColumn.queryName },
                     selector: identity.getSelector(),
                     properties: {
-                        fill: { solid: { color: 'FFF' } }
+                        fill: { solid: { color: dp.color} }
                     }
                 });
             })

@@ -42,6 +42,7 @@ import LabelLayoutStrategy = axis.LabelLayoutStrategy;
 
 import TextMeasurementService = textMeasurementService.textMeasurementService;
 
+import DataViewValueColumns = powerbi.DataViewValueColumns;
 import DataViewObjects = powerbi.DataViewObjects;
 import DataViewObject = powerbi.DataViewObject;
 import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
@@ -65,6 +66,7 @@ import {
 } from "./settings";
 import { color } from "d3";
 import { ViEvac_PolarChart } from "./visual";
+import { dataViewObjects } from "powerbi-visuals-utils-dataviewutils";
 
 // ---------------------------- A FEW D3 DEFINITIONS ---------------------------------
 type Selection<T> = d3.Selection<any, T, any, any>;
@@ -433,7 +435,23 @@ export function getColor(
         defaultColor
     );
 
-    return colorHelper.getColorForSeriesValue(objects, measureKey, "foreground");
+    return colorHelper.getColorForSeriesValue(objects, measureKey);
+}
+
+export function getSeriesColor(
+    properties: DataViewObjectPropertyIdentifier,
+    defaultColor: string,
+    objects: DataViewValueColumns,
+    measureKey: number
+): string {
+
+    if ("objects" in objects[measureKey].source) {
+        let myObjects: DataViewObjects = objects[measureKey].source.objects
+        return dataViewObjects.getFillColor(myObjects, properties)
+    }
+
+    // objects not set until now ...
+    return defaultColor
 }
 
 /**
